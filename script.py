@@ -50,6 +50,16 @@ class Simulator:
     def totalValue(self, price):
         return self.money + self.crypto * price
 
+
+
+def allInStrategy(startBalance, x):
+    totalValues = []
+    simulator = Simulator(startBalance)
+    simulator.buy(startBalance, data[0].open)
+    for i in range(len(data)):
+        totalValues.append(simulator.totalValue(data[i].open))
+    return totalValues
+
 # Codzienie kupuje za x dolcow
 def alwaysBuyStrategy(x):
     totalValues = []
@@ -88,17 +98,15 @@ def average(data):
 def movingAveragesStrategy(startBalance, x):
     totalValues = []
     simulator = Simulator(startBalance)
-
-    for i in range(len(data)):
-        if (i > 200):
-            prices = [o.open for o in data]
-            avg50 = average(prices[i-50:i])
-            avg200 = average(prices[i-200:i])
-            if (avg50 > avg200):
-                simulator.buy(x, data[i].open)
-            else:
-                simulator.sell(x, data[i].open)
-            totalValues.append(simulator.totalValue(data[i].open))
+    for i in range(200, len(data)):
+        prices = [o.close for o in data]
+        avg50 = average(prices[i-50:i-1])
+        avg200 = average(prices[i-200:i-1])
+        if (avg50 > avg200):
+            simulator.buy(x, data[i].open)
+        else:
+            simulator.sell(x, data[i].open)
+        totalValues.append(simulator.totalValue(data[i].open))
     return totalValues
 
 # tylko jak sie przetna
@@ -106,36 +114,61 @@ def movingAveragesCrossingStrategy(startBalance, x):
     totalValues = []
     simulator = Simulator(startBalance)
     previous200WasOver = True
-    for i in range(len(data)):
-        if (i > 200):
-            prices = [o.open for o in data]
-            avg50 = average(prices[i-50:i])
-            avg200 = average(prices[i-200:i])
-            if (avg50 > avg200 and previous200WasOver):
-                simulator.buy(x, data[i].open)
-                previous200WasOver = False
-            elif (avg50 < avg200 and previous200WasOver == False):
-                simulator.sell(x, data[i].open)
-                previous200WasOver = True
-            totalValues.append(simulator.totalValue(data[i].open))
+    for i in range(200, len(data)):
+        prices = [o.close for o in data]
+        avg50 = average(prices[i-50:i-1])
+        avg200 = average(prices[i-200:i-1])
+        if (avg50 > avg200 and previous200WasOver == True):
+            simulator.buy(x, data[i].open)
+            previous200WasOver = False
+        elif (avg50 < avg200 and previous200WasOver == False):
+            simulator.sell(x, data[i].open)
+            previous200WasOver = True
+        totalValues.append(simulator.totalValue(data[i].open))
     return totalValues
 
-def allInStrategy(startBalance, x):
+def MMA(data):
+    n = len(data)
+    mma = data[0]
+    for i in range(1, n):
+        mma = ((n-1)*mma + data[i])/n
+    return mma
+
+def RS(data, n):
+    relevantData = data[len(data) - n:len(data)]
+    relevantData = [o.close for o in data]
+    diffsInc = []
+    diffsDec = []
+    for i in range(1, len(relevantData)):
+        diff = relevantData[i] - relevantData[i-1]
+        if diff > 0:
+            diffsInc.append(diff)
+        elif diff < 0:
+            diffsDec.append(-diff)
+    return MMA(diffsInc)/MMA(diffsDec)
+
+def calculateRSI(data, n = 15):
+    return 100 - (100/(1 + RS(data, n)))
+
+def rsiStrategy(startBalance, x):
     totalValues = []
     simulator = Simulator(startBalance)
-    simulator.buy(startBalance, data[0].open)
-    for i in range(len(data)):
+    for i in range(15, len(data)):
+        rsi = calculateRSI(data[:i], 15)
+        if (rsi < 50):
+            simulator.buy(x, data[i].open)
+        elif (rsi > 50):
+            simulator.sell(x, data[i].open)
         totalValues.append(simulator.totalValue(data[i].open))
     return totalValues
 
 
-
 data = readData("btc_every_day.csv")
-data = data[::10]
 # plotData(data)
-startBalance = 1000
-totalValues = movingAveragesStrategy(startBalance, 100)
+startBalance = 10000
+totalValues = rsiStrategy(startBalance, 10)
 print(f"Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {startBalance}")
 
 plt.plot(totalValues)
 plt.show()
+
