@@ -52,18 +52,8 @@ class Simulation:
         return self.money + self.crypto * price
 
 
-
 def allInStrategy(startBalance, x):
-    totalValues = []
-    simulation = Simulation(startBalance)
-    simulation.buy(startBalance, data[0].open)
-    for i in range(len(data)):
-        totalValues.append(simulation.totalValue(data[i].open))
-    return totalValues
-
-
-def alwaysBuyStrategy(startBalance, x):
-    return True
+    return "BUY"
 
 # Codzienie kupuje za x dolcow
 def randomBuySellStrategy(startBalance, x):
@@ -84,9 +74,11 @@ def movingAveragesStrategy(prices, x=0):
 def rsiStrategy(pricesSoFar, n):
     rsi = calculateRSI(pricesSoFar, 15)
     if (rsi > 80):
-        return False
+        return "SELL"
     elif (rsi < 20):
-        return True
+        return "BUY"
+    else:
+        return "HOLD"
 
 def MMA(data):
     n = len(data)
@@ -115,10 +107,10 @@ def simulateRegularlyEqualBuySell(startBalance, x, strategy):
     simulation = Simulation(startBalance)
     prices = [o.close for o in data]
     for i in range(15, len(prices)):
-        shouldBuy = strategy(prices[:i], 15)
-        if (shouldBuy):
+        decision = strategy(prices[:i], 15)
+        if (decision == "BUY"):
             simulation.buy(x, data[i].open)
-        else:
+        elif (decision == "SELL"):
             simulation.sell(x, data[i].open)
         totalValues.append(simulation.totalValue(data[i].open))
     return totalValues
@@ -127,32 +119,31 @@ def predictNext(prices):
     correct = 0
     wrong = 0
     for i in range(15, len(prices) - 1):
-        shouldBuy = rsiStrategy(prices[:i], 15)
-        if prices[i+1] > prices[i] and shouldBuy:
+        decision = rsiStrategy(prices[:i], 15)
+        if prices[i+1] > prices[i] and decision:
             correct = correct + 1
-        elif prices[i+1] > prices[i] and not shouldBuy:
+        elif prices[i+1] > prices[i] and not decision:
             wrong = wrong + 1
-        elif prices[i+1] < prices[i] and not shouldBuy:
+        elif prices[i+1] < prices[i] and not decision:
            correct = correct + 1
         else:
             wrong = wrong + 1
     return [correct, wrong]
 
-def simulateAllInEveryDayDecide(startBalance, strategy):
+def simulateRegularDecision(startBalance, strategy, step):
     totalValues = []
     simulation = Simulation(startBalance)
     prices = [o.close for o in data]
-    for i in range(15, len(prices)):
-        shouldBuy = strategy(prices[:i], 15)
-        if (shouldBuy):
+    for i in range(15, len(prices), step):
+        decision = strategy(prices[:i], 15)
+        if (decision == "BUY"):
             if (simulation.money > 100):
                 simulation.buy(simulation.money, data[i].open)
                 print(f"Buy. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
-        else:
+        elif (decision == "SELL"):
             if (simulation.crypto * data[i].open > 100):
                 simulation.sell(simulation.crypto*data[i].open, data[i].open)
                 print(f"Sell. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
-            
         totalValues.append(simulation.totalValue(data[i].open))
     print(f"Crypto: {simulation.crypto} money: {simulation.money}")
     return totalValues
@@ -161,12 +152,12 @@ data = readData("btc_every_day.csv")
 data = data[::]
 plotData(data)
 startBalance = 1000
-totalValues = simulateAllInEveryDayDecide(startBalance, randomBuySellStrategy)
+totalValues = simulateRegularDecision(startBalance, rsiStrategy, 10)
 print(f"Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {startBalance}")
 
 plt.plot(totalValues)
 plt.show()
 
 # prices = [o.close for o in data]
-# [corr, wrong] = simulateAllInEveryDayDecide(prices)
+# [corr, wrong] = simulateRegularDecision(prices)
 # print(f"correct: {corr} wrong: {wrong}")
