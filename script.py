@@ -67,9 +67,9 @@ def movingAveragesStrategy(prices, x=0):
     avg50 = average(prices[len(prices)-50:])
     avg200 = average(prices[len(prices)-200:])
     if (avg50 > avg200):
-        return True
+        return "BUY"
     else:
-        return False
+        return "SELL"
 
 def rsiStrategy(pricesSoFar, n):
     rsi = calculateRSI(pricesSoFar, 15)
@@ -152,7 +152,7 @@ data = readData("btc_every_day.csv")
 data = data[::]
 plotData(data)
 startBalance = 1000
-totalValues = simulateRegularDecision(startBalance, rsiStrategy, 10)
+totalValues = simulateRegularDecision(startBalance, movingAveragesStrategy, 24)
 print(f"Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {startBalance}")
 
 plt.plot(totalValues)
