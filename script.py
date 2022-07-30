@@ -2,6 +2,7 @@ from datetime import date
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import math
 
 # unix, date, symbol, open, high, low, close, VolumeBTC, VolumeUSDT, tradecount
 class DataPoint:
@@ -58,11 +59,12 @@ class Simulation:
         self.startMoney = startMoney
         self.provision = provision
 
-    def displayResultMsg(self, msg, totalValues):
+    def displayResultMsg(self, msg, totalValues, ratio):
+        percentage = round(ratio * 100)
         if len(msg) == 0:
             msg = "Result"
         print(f"{msg}: Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {self.startMoney}"
-                f" czyli {round((totalValues[-1]/self.startMoney) * 100)}%")
+                f" czyli {percentage}%")
 
     def simulate(self, strategy, fractionOfTotalToTrade=1, step=1):
         totalValues = []
@@ -80,10 +82,11 @@ class Simulation:
             totalValues.append(account.totalValue(self.prices[i]))
             stockValues.append(account.stock * self.prices[i])
             moneyValues.append(account.money)
-        self.displayResultMsg(strategy.__name__, totalValues)
-        return [totalValues, moneyValues, stockValues]
+        ratio = totalValues[-1]/self.startMoney
+        self.displayResultMsg(strategy.__name__, totalValues, ratio)
+        return [totalValues, moneyValues, stockValues, ratio]
 
-def allInStrategy(startBalance, x):
+def holdStrategy(startBalance, x):
     return "BUY"
 
 # Codzienie kupuje za x dolcow
@@ -137,21 +140,40 @@ def calculateRSI(data, n = 15):
     return 100 - (100/(1 + RS(data, n)))
 
 
+def getNumberedDataChunk(data, num, maxnum):
+    chunkLen = math.floor(len(data) / maxnum)
+    left = num * chunkLen
+    right = num * chunkLen + chunkLen
+    # print(left)
+    # print(right)
+    return data[left:right]
+
 
 data = readData("btc_every_h.csv")
 # data = readData("HistoricalPrices.csv", [0,1,2,3,4])
-prices = [o.close for o in data]
-prices = prices[int(len(prices)*0.7):]
+allPrices = [o.close for o in data]
+# allPrices = allPrices[int(len(allPrices)*0.1):]
 
-simulation = Simulation(prices, 1000000, 0.001)
+ratios = []
+ratiosRef = []
+maxchunk = 10
+for i in range(maxchunk): 
+    prices = getNumberedDataChunk(allPrices, i, maxchunk)
+    simulation = Simulation(prices, 1000000, 0.001)
 
-[totalValues, moneyValues, stockValues] = simulation.simulate(movingAveragesStrategy, 1)
-plt.figure()
-plt.plot(range(len(prices) - 15), totalValues, stockValues)
+    [totalValues, moneyValues, stockValues, ratio] = simulation.simulate(rsiStrategy, 1)
+    ratios.append(ratio)
+    # plt.figure()
+    # plt.plot(range(len(prices) - 15), totalValues, stockValues)
 
-[totalValues, moneyValues, stockValues] = simulation.simulate(allInStrategy, 1)
-plt.figure()
-plt.plot(range(len(prices) - 15), totalValues, stockValues)
+    [totalValues, moneyValues, stockValues, ratioRef] = simulation.simulate(holdStrategy, 1)
+    ratiosRef.append(ratioRef)
+    # plt.figure()
+    # plt.plot(range(len(prices) - 15), totalValues, stockValues)
+
+
+print(f"Average ratio of start money for chosen strategy: {sum(ratios)/len(ratios)}")
+print(f"Average ratio of start money for all in: {sum(ratiosRef)/len(ratiosRef)}")
 
 
 plt.show()

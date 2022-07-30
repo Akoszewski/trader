@@ -1,0 +1,40 @@
+0
+1648
+movingAveragesStrategy: Na koniec masz: 918126 dol z zainwestowanych 1000000 czyli 92%
+holdStrategy: Na koniec masz: 979729 dol z zainwestowanych 1000000 czyli 98%
+1648
+3296
+movingAveragesStrategy: Na koniec masz: 1649296 dol z zainwestowanych 1000000 czyli 165%
+holdStrategy: Na koniec masz: 2003553 dol z zainwestowanych 1000000 czyli 200%
+3296
+4944
+movingAveragesStrategy: Na koniec masz: 1627516 dol z zainwestowanych 1000000 czyli 163%
+holdStrategy: Na koniec masz: 2179790 dol z zainwestowanych 1000000 czyli 218%
+4944
+6592
+movingAveragesStrategy: Na koniec masz: 1003164 dol z zainwestowanych 1000000 czyli 100%
+holdStrategy: Na koniec masz: 1156334 dol z zainwestowanych 1000000 czyli 116%
+6592
+8240
+movingAveragesStrategy: Na koniec masz: 822846 dol z zainwestowanych 1000000 czyli 82%
+holdStrategy: Na koniec masz: 599758 dol z zainwestowanych 1000000 czyli 60%
+8240
+9888
+movingAveragesStrategy: Na koniec masz: 1009120 dol z zainwestowanych 1000000 czyli 101%
+holdStrategy: Na koniec masz: 1392767 dol z zainwestowanych 1000000 czyli 139%
+9888
+11536
+movingAveragesStrategy: Na koniec masz: 1173782 dol z zainwestowanych 1000000 czyli 117%
+holdStrategy: Na koniec masz: 1223101 dol z zainwestowanych 1000000 czyli 122%
+11536
+13184
+movingAveragesStrategy: Na koniec masz: 845757 dol z zainwestowanych 1000000 czyli 85%
+holdStrategy: Na koniec masz: 700705 dol z zainwestowanych 1000000 czyli 70%
+13184
+14832
+movingAveragesStrategy: Na koniec masz: 991006 dol z zainwestowanych 1000000 czyli 99%
+holdStrategy: Na koniec masz: 1070832 dol z zainwestowanych 1000000 czyli 107%
+14832
+16480
+movingAveragesStrategy: Na koniec masz: 747271 dol z zainwestowanych 1000000 czyli 75%
+holdStrategy: Na koniec masz: 485459 dol z zainwestowanych 1000000 czyli 49%
