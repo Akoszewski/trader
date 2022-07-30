@@ -32,26 +32,56 @@ def plotData(data):
     prices = [o.open for o in data]
     plt.plot(x, prices)
 
-class Simulation:
-    def __init__(self, startMoney = 0):
+class Account:
+    def __init__(self, startMoney, provision):
         self.startMoney = startMoney
         self.money = self.startMoney
         self.stock = 0
-        self.provision = 0.00
+        self.provision = provision
 
     def buy(self, amountOfMoney, price):
         if self.money >= amountOfMoney:
             self.money -= amountOfMoney
-            self.stock += (1-self.provision)*amountOfMoney/price
-    
+            self.stock += (1 - self.provision) * amountOfMoney / price
+
     def sell(self, amountOfMoney, price):
-        if self.stock >= amountOfMoney/price:
-            self.money += (1-self.provision)*amountOfMoney
-            self.stock -= amountOfMoney/price
+        if self.stock >= amountOfMoney / price:
+            self.money += (1 - self.provision) * amountOfMoney
+            self.stock -= amountOfMoney / price
 
     def totalValue(self, price):
         return self.money + self.stock * price
 
+class Simulation:
+    def __init__(self, startMoney, provision = 0):
+        self.startMoney = startMoney
+        self.provision = provision
+
+    def displayResultMsg(self, msg, totalValues):
+        if len(msg) == 0:
+            msg = "Result"
+        print(f"{msg}: Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {self.startMoney}"
+                f" czyli {round((totalValues[-1]/self.startMoney) * 100)}%")
+
+    def simulate(self, strategy, fractionOfTotalToTrade=1, step=1):
+        totalValues = []
+        moneyValues = []
+        stockValues = []
+        account = Account(self.startMoney, self.provision)
+        prices = [o.close for o in data]
+        for i in range(15, len(prices), step):
+            decision = strategy(prices[:i], 15)
+            if (decision == "BUY"):
+                account.buy(account.money * fractionOfTotalToTrade, data[i].close)
+                # print(f"Buy. Curr stock: {self.stock} curr money: {self.money} for price {data[i].close}")
+            elif (decision == "SELL"):
+                account.sell(account.stock * fractionOfTotalToTrade * data[i].close, data[i].close)
+                # print(f"Sell. Curr stock: {self.stock} curr money: {self.money} for price {data[i].close}")
+            totalValues.append(account.totalValue(data[i].close))
+            stockValues.append(account.stock * data[i].close)
+            moneyValues.append(account.money)
+        self.displayResultMsg(strategy.__name__, totalValues)
+        return [totalValues, moneyValues, stockValues]
 
 def allInStrategy(startBalance, x):
     return "BUY"
@@ -107,58 +137,21 @@ def calculateRSI(data, n = 15):
     return 100 - (100/(1 + RS(data, n)))
 
 
-def simulate(startBalance, strategy, fractionOfTotalToTrade=1, step=1):
-    totalValues = []
-    moneyValues = []
-    stockValues = []
-    simulation = Simulation(startBalance)
-    prices = [o.close for o in data]
-    for i in range(15, len(prices), step):
-        decision = strategy(prices[:i], 15)
-        if (decision == "BUY"):
-            simulation.buy(simulation.money * fractionOfTotalToTrade, data[i].close)
-            # print(f"Buy. Curr stock: {simulation.stock} curr money: {simulation.money} for price {data[i].close}")
-        elif (decision == "SELL"):
-            simulation.sell(simulation.stock*fractionOfTotalToTrade*data[i].close, data[i].close)
-            # print(f"Sell. Curr stock: {simulation.stock} curr money: {simulation.money} for price {data[i].close}")
-        totalValues.append(simulation.totalValue(data[i].close))
-        stockValues.append(simulation.stock * data[i].close)
-        moneyValues.append(simulation.money)
-    return [totalValues, moneyValues, stockValues]
-
-def displayResultMsg(msg, totalValues, startBalance):
-    if len(msg) == 0:
-        msg = "Result"
-    print(f"{msg}: Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {startBalance}"
-            f" czyli {round((totalValues[-1]/startBalance) * 100)}%")
-
-# Load data
 data = readData("btc_every_h.csv")
 # data = readData("HistoricalPrices.csv", [0,1,2,3,4])
 data = data[::]
 # data = data[int(len(data)*0.5):]
 
-# Simulate
-startBalance = 1000000
-[totalValues, moneyValues, stockValues] = simulate(startBalance, movingAveragesStrategy, 0.1, 1)
-displayResultMsg("movingAveragesStrategy", totalValues, startBalance)
 
-# Display results
-plt.figure()
-plotData(data)
+simulation = Simulation(1000000, 0.001)
 
+[totalValues, moneyValues, stockValues] = simulation.simulate(movingAveragesStrategy, 0.01)
 plt.figure()
 plt.plot(range(len(data) - 15), totalValues, stockValues)
 
-# Simulate all in
-startBalance = 1000000
-[totalValues, moneyValues, stockValues] = simulate(startBalance, allInStrategy, 1, 1)
-displayResultMsg("allInStrategy", totalValues, startBalance)
-
-# Display results
-
+[totalValues, moneyValues, stockValues] = simulation.simulate(allInStrategy, 1)
 plt.figure()
 plt.plot(range(len(data) - 15), totalValues, stockValues)
 
 
-# plt.show()
+plt.show()
