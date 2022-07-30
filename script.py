@@ -53,7 +53,8 @@ class Account:
         return self.money + self.stock * price
 
 class Simulation:
-    def __init__(self, startMoney, provision = 0):
+    def __init__(self, data, startMoney, provision = 0):
+        self.prices = prices
         self.startMoney = startMoney
         self.provision = provision
 
@@ -68,17 +69,16 @@ class Simulation:
         moneyValues = []
         stockValues = []
         account = Account(self.startMoney, self.provision)
-        prices = [o.close for o in data]
-        for i in range(15, len(prices), step):
-            decision = strategy(prices[:i], 15)
+        for i in range(15, len(self.prices), step):
+            decision = strategy(self.prices[:i], 15)
             if (decision == "BUY"):
-                account.buy(account.money * fractionOfTotalToTrade, data[i].close)
+                account.buy(account.money * fractionOfTotalToTrade, self.prices[i])
                 # print(f"Buy. Curr stock: {self.stock} curr money: {self.money} for price {data[i].close}")
             elif (decision == "SELL"):
-                account.sell(account.stock * fractionOfTotalToTrade * data[i].close, data[i].close)
+                account.sell(account.stock * fractionOfTotalToTrade * self.prices[i], self.prices[i])
                 # print(f"Sell. Curr stock: {self.stock} curr money: {self.money} for price {data[i].close}")
-            totalValues.append(account.totalValue(data[i].close))
-            stockValues.append(account.stock * data[i].close)
+            totalValues.append(account.totalValue(self.prices[i]))
+            stockValues.append(account.stock * self.prices[i])
             moneyValues.append(account.money)
         self.displayResultMsg(strategy.__name__, totalValues)
         return [totalValues, moneyValues, stockValues]
@@ -137,21 +137,21 @@ def calculateRSI(data, n = 15):
     return 100 - (100/(1 + RS(data, n)))
 
 
+
 data = readData("btc_every_h.csv")
 # data = readData("HistoricalPrices.csv", [0,1,2,3,4])
-data = data[::]
-# data = data[int(len(data)*0.5):]
+prices = [o.close for o in data]
+prices = prices[int(len(prices)*0.7):]
 
+simulation = Simulation(prices, 1000000, 0.001)
 
-simulation = Simulation(1000000, 0.001)
-
-[totalValues, moneyValues, stockValues] = simulation.simulate(movingAveragesStrategy, 0.01)
+[totalValues, moneyValues, stockValues] = simulation.simulate(movingAveragesStrategy, 1)
 plt.figure()
-plt.plot(range(len(data) - 15), totalValues, stockValues)
+plt.plot(range(len(prices) - 15), totalValues, stockValues)
 
 [totalValues, moneyValues, stockValues] = simulation.simulate(allInStrategy, 1)
 plt.figure()
-plt.plot(range(len(data) - 15), totalValues, stockValues)
+plt.plot(range(len(prices) - 15), totalValues, stockValues)
 
 
 plt.show()
