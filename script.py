@@ -5,30 +5,32 @@ import random
 
 # unix, date, symbol, open, high, low, close, VolumeBTC, VolumeUSDT, tradecount
 class DataPoint:
-    def __init__(self, dataRow):
-        self.date = dataRow[1]
-        self.open = float(dataRow[3])
-        self.high = float(dataRow[4])
-        self.low = float(dataRow[5])
-        self.close = float(dataRow[6])
+    def __init__(self, dataRow, indices):
+        self.date = dataRow[indices[0]]
+        self.open = float(dataRow[indices[1]])
+        self.high = float(dataRow[indices[2]])
+        self.low = float(dataRow[indices[3]])
+        self.close = float(dataRow[indices[4]])
 
     def printDataPoint(self):
         print(f"Date: {self.date} open: {self.open} h: {self.high} l: {self.low} close: {self.close}")
 
-def readData(filename):
+def readData(filename, indices = [1,3,4,5,6]):
     data = []
     with open(filename, "r") as f:
         rawData = f.readlines()
         for row in reversed(rawData):
+            if row[0] == '#':
+                continue
             row = row.split(",")
-            data.append(DataPoint(row))
+            data.append(DataPoint(row, indices))
     return data
+
 
 def plotData(data):
     x = range(len(data))
     prices = [o.open for o in data]
     plt.plot(x, prices)
-    plt.show()
 
 class Simulation:
     def __init__(self, startMoney = 0):
@@ -72,9 +74,9 @@ def movingAveragesStrategy(prices, x=0):
 
 def rsiStrategy(pricesSoFar, n):
     rsi = calculateRSI(pricesSoFar, 15)
-    if (rsi > 80):
+    if (rsi > 70):
         return "SELL"
-    elif (rsi < 20):
+    elif (rsi < 30):
         return "BUY"
     else:
         return "HOLD"
@@ -131,30 +133,40 @@ def predictNext(prices):
 
 def simulateRegularDecision(startBalance, strategy, step):
     totalValues = []
+    cryptoValues = []
+    moneyValues = []
     simulation = Simulation(startBalance)
     prices = [o.close for o in data]
     for i in range(15, len(prices), step):
         decision = strategy(prices[:i], 15)
         decision2 = movingAveragesStrategy(prices[:i], 15)
-        if (decision == "BUY" and decision2 == "BUY"):
-            simulation.buy(simulation.money, data[i].open)
+        if (decision == "BUY" or decision2 == "BUY"):
+            simulation.buy(simulation.money, data[i].close)
             print(f"Buy. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
-        elif (decision == "SELL"):
-            simulation.sell(simulation.crypto*data[i].open, data[i].open)
+        elif (decision == "SELL" and decision2 == "SELL"):
+            simulation.sell(simulation.crypto*data[i].close, data[i].close)
             print(f"Sell. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
-        totalValues.append(simulation.totalValue(data[i].open))
+        totalValues.append(simulation.totalValue(data[i].close))
+        cryptoValues.append(simulation.crypto * data[i].close)
+        moneyValues.append(simulation.money)
     print(f"Crypto: {simulation.crypto} money: {simulation.money}")
-    return totalValues
+    return [totalValues, moneyValues, cryptoValues]
 
 
-data = readData("btc_every_h.csv")
+# data = readData("btc_every_h.csv")
+data = readData("HistoricalPrices.csv", [0,1,2,3,4])
 data = data[::]
+# data = data[int(len(data)*0.7):]
+plt.figure()
 plotData(data)
-startBalance = 1000
-totalValues = simulateRegularDecision(startBalance, rsiStrategy, 10)
+startBalance = 1000000
+[totalValues, moneyValues, cryptoValues] = simulateRegularDecision(startBalance, rsiStrategy, 1)
 print(f"Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {startBalance}")
 
-plt.plot(totalValues)
+# plt.plot(totalValues, moneyValues, cryptoValues)
+plt.figure()
+plt.plot(range(len(data) - 15), totalValues, cryptoValues)
+
 plt.show()
 
 # prices = [o.close for o in data]
