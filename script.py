@@ -43,8 +43,7 @@ class Simulation:
             self.crypto += (1-self.provision)*amountOfMoney/price
     
     def sell(self, amountOfMoney, price):
-        # if self.crypto >= amountOfMoney/price:
-        if True: # mozna shortowac
+        if self.crypto >= amountOfMoney/price:
             self.money += (1-self.provision)*amountOfMoney
             self.crypto -= amountOfMoney/price
 
@@ -136,23 +135,23 @@ def simulateRegularDecision(startBalance, strategy, step):
     prices = [o.close for o in data]
     for i in range(15, len(prices), step):
         decision = strategy(prices[:i], 15)
-        if (decision == "BUY"):
-            if (simulation.money > 100):
-                simulation.buy(simulation.money, data[i].open)
-                print(f"Buy. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
+        decision2 = movingAveragesStrategy(prices[:i], 15)
+        if (decision == "BUY" and decision2 == "BUY"):
+            simulation.buy(simulation.money, data[i].open)
+            print(f"Buy. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
         elif (decision == "SELL"):
-            if (simulation.crypto * data[i].open > 100):
-                simulation.sell(simulation.crypto*data[i].open, data[i].open)
-                print(f"Sell. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
+            simulation.sell(simulation.crypto*data[i].open, data[i].open)
+            print(f"Sell. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
         totalValues.append(simulation.totalValue(data[i].open))
     print(f"Crypto: {simulation.crypto} money: {simulation.money}")
     return totalValues
 
-data = readData("btc_every_day.csv")
+
+data = readData("btc_every_h.csv")
 data = data[::]
 plotData(data)
 startBalance = 1000
-totalValues = simulateRegularDecision(startBalance, movingAveragesStrategy, 24)
+totalValues = simulateRegularDecision(startBalance, rsiStrategy, 10)
 print(f"Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {startBalance}")
 
 plt.plot(totalValues)
