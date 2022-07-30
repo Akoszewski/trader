@@ -36,21 +36,21 @@ class Simulation:
     def __init__(self, startMoney = 0):
         self.startMoney = startMoney
         self.money = self.startMoney
-        self.crypto = 0
-        self.provision = 0.001
+        self.stock = 0
+        self.provision = 0.00
 
     def buy(self, amountOfMoney, price):
         if self.money >= amountOfMoney:
             self.money -= amountOfMoney
-            self.crypto += (1-self.provision)*amountOfMoney/price
+            self.stock += (1-self.provision)*amountOfMoney/price
     
     def sell(self, amountOfMoney, price):
-        if self.crypto >= amountOfMoney/price:
+        if self.stock >= amountOfMoney/price:
             self.money += (1-self.provision)*amountOfMoney
-            self.crypto -= amountOfMoney/price
+            self.stock -= amountOfMoney/price
 
     def totalValue(self, price):
-        return self.money + self.crypto * price
+        return self.money + self.stock * price
 
 
 def allInStrategy(startBalance, x):
@@ -58,8 +58,11 @@ def allInStrategy(startBalance, x):
 
 # Codzienie kupuje za x dolcow
 def randomBuySellStrategy(startBalance, x):
-    return random.randint(0, 1)
-
+    if random.randint(0, 1) == 1:
+        return "BUY"
+    else:
+        return "SELL"
+    
 def average(data): 
     avg = sum(data) / len(data) 
     return avg
@@ -74,9 +77,9 @@ def movingAveragesStrategy(prices, x=0):
 
 def rsiStrategy(pricesSoFar, n):
     rsi = calculateRSI(pricesSoFar, 15)
-    if (rsi > 70):
+    if (rsi > 80):
         return "SELL"
-    elif (rsi < 30):
+    elif (rsi < 20):
         return "BUY"
     else:
         return "HOLD"
@@ -103,72 +106,59 @@ def RS(data, n):
 def calculateRSI(data, n = 15):
     return 100 - (100/(1 + RS(data, n)))
 
-def simulateRegularlyEqualBuySell(startBalance, x, strategy):
-    totalValues = []
-    simulation = Simulation(startBalance)
-    prices = [o.close for o in data]
-    for i in range(15, len(prices)):
-        decision = strategy(prices[:i], 15)
-        if (decision == "BUY"):
-            simulation.buy(x, data[i].open)
-        elif (decision == "SELL"):
-            simulation.sell(x, data[i].open)
-        totalValues.append(simulation.totalValue(data[i].open))
-    return totalValues
 
-def predictNext(prices):
-    correct = 0
-    wrong = 0
-    for i in range(15, len(prices) - 1):
-        decision = rsiStrategy(prices[:i], 15)
-        if prices[i+1] > prices[i] and decision:
-            correct = correct + 1
-        elif prices[i+1] > prices[i] and not decision:
-            wrong = wrong + 1
-        elif prices[i+1] < prices[i] and not decision:
-           correct = correct + 1
-        else:
-            wrong = wrong + 1
-    return [correct, wrong]
-
-def simulateRegularDecision(startBalance, strategy, step):
+def simulate(startBalance, strategy, fractionOfTotalToTrade=1, step=1):
     totalValues = []
-    cryptoValues = []
     moneyValues = []
+    stockValues = []
     simulation = Simulation(startBalance)
     prices = [o.close for o in data]
     for i in range(15, len(prices), step):
         decision = strategy(prices[:i], 15)
-        decision2 = movingAveragesStrategy(prices[:i], 15)
-        if (decision == "BUY" or decision2 == "BUY"):
-            simulation.buy(simulation.money, data[i].close)
-            print(f"Buy. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
-        elif (decision == "SELL" and decision2 == "SELL"):
-            simulation.sell(simulation.crypto*data[i].close, data[i].close)
-            print(f"Sell. Curr crypto: {simulation.crypto} curr money: {simulation.money}")
+        if (decision == "BUY"):
+            simulation.buy(simulation.money * fractionOfTotalToTrade, data[i].close)
+            # print(f"Buy. Curr stock: {simulation.stock} curr money: {simulation.money} for price {data[i].close}")
+        elif (decision == "SELL"):
+            simulation.sell(simulation.stock*fractionOfTotalToTrade*data[i].close, data[i].close)
+            # print(f"Sell. Curr stock: {simulation.stock} curr money: {simulation.money} for price {data[i].close}")
         totalValues.append(simulation.totalValue(data[i].close))
-        cryptoValues.append(simulation.crypto * data[i].close)
+        stockValues.append(simulation.stock * data[i].close)
         moneyValues.append(simulation.money)
-    print(f"Crypto: {simulation.crypto} money: {simulation.money}")
-    return [totalValues, moneyValues, cryptoValues]
+    return [totalValues, moneyValues, stockValues]
 
+def displayResultMsg(msg, totalValues, startBalance):
+    if len(msg) == 0:
+        msg = "Result"
+    print(f"{msg}: Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {startBalance}"
+            f" czyli {round((totalValues[-1]/startBalance) * 100)}%")
 
-# data = readData("btc_every_h.csv")
-data = readData("HistoricalPrices.csv", [0,1,2,3,4])
+# Load data
+data = readData("btc_every_h.csv")
+# data = readData("HistoricalPrices.csv", [0,1,2,3,4])
 data = data[::]
-# data = data[int(len(data)*0.7):]
+# data = data[int(len(data)*0.5):]
+
+# Simulate
+startBalance = 1000000
+[totalValues, moneyValues, stockValues] = simulate(startBalance, movingAveragesStrategy, 0.1, 1)
+displayResultMsg("movingAveragesStrategy", totalValues, startBalance)
+
+# Display results
 plt.figure()
 plotData(data)
-startBalance = 1000000
-[totalValues, moneyValues, cryptoValues] = simulateRegularDecision(startBalance, rsiStrategy, 1)
-print(f"Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {startBalance}")
 
-# plt.plot(totalValues, moneyValues, cryptoValues)
 plt.figure()
-plt.plot(range(len(data) - 15), totalValues, cryptoValues)
+plt.plot(range(len(data) - 15), totalValues, stockValues)
 
-plt.show()
+# Simulate all in
+startBalance = 1000000
+[totalValues, moneyValues, stockValues] = simulate(startBalance, allInStrategy, 1, 1)
+displayResultMsg("allInStrategy", totalValues, startBalance)
 
-# prices = [o.close for o in data]
-# [corr, wrong] = simulateRegularDecision(prices)
-# print(f"correct: {corr} wrong: {wrong}")
+# Display results
+
+plt.figure()
+plt.plot(range(len(data) - 15), totalValues, stockValues)
+
+
+# plt.show()
