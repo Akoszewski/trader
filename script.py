@@ -54,10 +54,11 @@ class Account:
         return self.money + self.stock * price
 
 class Simulation:
-    def __init__(self, data, startMoney, provision = 0):
+    def __init__(self, data, delay, startMoney, provision = 0):
         self.prices = prices
         self.startMoney = startMoney
         self.provision = provision
+        self.delay = delay
 
     def displayResultMsg(self, msg, totalValues, ratio):
         percentage = round(ratio * 100)
@@ -71,7 +72,7 @@ class Simulation:
         moneyValues = []
         stockValues = []
         account = Account(self.startMoney, self.provision)
-        for i in range(15, len(self.prices), step):
+        for i in range(self.delay, len(self.prices), step):
             decision = strategy(self.prices[:i], 15)
             if (decision == "BUY"):
                 account.buy(account.money * fractionOfTotalToTrade, self.prices[i])
@@ -159,7 +160,7 @@ ratiosRef = []
 maxchunk = 10
 for i in range(maxchunk): 
     prices = getNumberedDataChunk(allPrices, i, maxchunk)
-    simulation = Simulation(prices, 1000000, 0.001)
+    simulation = Simulation(prices, 200, 1000000, 0.001)
 
     [totalValues, moneyValues, stockValues, ratio] = simulation.simulate(rsiStrategy, 1)
     ratios.append(ratio)
