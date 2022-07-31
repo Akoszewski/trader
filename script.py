@@ -162,7 +162,7 @@ for i in range(maxchunk):
     prices = getNumberedDataChunk(allPrices, i, maxchunk)
     simulation = Simulation(prices, 200, 1000000, 0.001)
 
-    [totalValues, moneyValues, stockValues, ratio] = simulation.simulate(rsiStrategy, 1)
+    [totalValues, moneyValues, stockValues, ratio] = simulation.simulate(movingAveragesStrategy, 1)
     ratios.append(ratio)
     # plt.figure()
     # plt.plot(range(len(prices) - 15), totalValues, stockValues)
@@ -171,10 +171,11 @@ for i in range(maxchunk):
     ratiosRef.append(ratioRef)
     # plt.figure()
     # plt.plot(range(len(prices) - 15), totalValues, stockValues)
+    print("")
 
 
-print(f"Average ratio of start money for chosen strategy: {sum(ratios)/len(ratios)}")
-print(f"Average ratio of start money for all in: {sum(ratiosRef)/len(ratiosRef)}")
+print(f"Average ratio of start money for chosen strategy: {round(sum(ratios)/len(ratios) * 100)}%")
+print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100)}%")
 
 
 plt.show()
