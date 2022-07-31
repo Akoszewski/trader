@@ -146,14 +146,18 @@ def getNumberedDataChunk(tradingDataLen, delay, num, maxnum):
     right = num * chunkLen + chunkLen + delay
     return [left, right]
 
-def getRandomDataChunk(minFractionOfLength, dataLength, delay):
+def getRandomDataChunk(minFractionOfLength, dataLength, delay, isChunkLengthFixed = False):
     diff = math.floor(minFractionOfLength * (dataLength - delay))
     left = random.randint(delay, dataLength - diff)
-    right = random.randint(left + diff, dataLength)
+    if isChunkLengthFixed:
+        right = left + diff
+    else:
+        right = random.randint(left + diff, dataLength)
     return [left, right]
 
 data = readData("btc_every_h.csv")
 prices = [o.close for o in data]
+
 
 ratios = []
 ratiosRef = []
@@ -164,16 +168,17 @@ for i in range(iterations):
     print(f"{i}/{iterations} (range {idxStart} - {idxEnd}):")
 
     simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
-
     ratio = simulation.simulate(movingAveragesStrategy, 1)
     ratios.append(ratio)
 
     ratioRef = simulation.simulate(holdStrategy, 1)
     ratiosRef.append(ratioRef)
+
     print("")
 
+averageRatio = sum(ratios)/len(ratios)
 
-print(f"Average ratio of start money for chosen strategy: {round(sum(ratios)/len(ratios) * 100)}%")
+print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100)}%")
 print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100)}%")
 print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
 print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
