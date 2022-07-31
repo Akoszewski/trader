@@ -69,11 +69,11 @@ class Simulation:
         print(f"{msg}: Na koniec masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
                 f" czyli {percentage}%")
 
-    def simulate(self, strategy, fractionOfTotalToTrade=1, step=1):
+    def simulate(self, strategy, strategyParams, fractionOfTotalToTrade=1, step=1):
         account = Account(self.startMoney, self.provision)
         lastValue = 0
         for i in range(self.idxStart, self.idxEnd, step):
-            decision = strategy(self.prices[:i], 15)
+            decision = strategy(self.prices[:i], strategyParams)
             if (decision == "BUY"):
                 account.buy(account.money * fractionOfTotalToTrade, self.prices[i])
                 # print(f"Buy. Curr stock: {self.stock} curr money: {self.money} for price {data[i].close}")
@@ -86,11 +86,11 @@ class Simulation:
         self.displayResultMsg(strategy.__name__, lastValue, ratio)
         return ratio
 
-def holdStrategy(startBalance, x):
+def holdStrategy(pricesSoFar, params):
     return "BUY"
 
 # Codzienie kupuje za x dolcow
-def randomBuySellStrategy(startBalance, x):
+def randomBuySellStrategy(pricesSoFar, params):
     if random.randint(0, 1) == 1:
         return "BUY"
     else:
@@ -100,15 +100,15 @@ def average(data):
     avg = sum(data) / len(data) 
     return avg
 
-def movingAveragesStrategy(prices, x=0):
-    avg50 = average(prices[len(prices)-50:])
-    avg200 = average(prices[len(prices)-200:])
+def movingAveragesStrategy(pricesSoFar, params):
+    avg50 = average(pricesSoFar[len(pricesSoFar)-50:])
+    avg200 = average(pricesSoFar[len(pricesSoFar)-200:])
     if (avg50 > avg200):
         return "BUY"
     else:
         return "SELL"
 
-def rsiStrategy(pricesSoFar, n):
+def rsiStrategy(pricesSoFar, params):
     rsi = calculateRSI(pricesSoFar, 15)
     if (rsi > 80):
         return "SELL"
@@ -158,32 +158,32 @@ def getRandomDataChunk(minFractionOfLength, dataLength, delay, isChunkLengthFixe
 data = readData("btc_every_h.csv")
 prices = [o.close for o in data]
 
+def testStrategy(iterations, strategy, strategyParams):
+    ratios = []
+    ratiosRef = []
+    delay = 200
+    for i in range(iterations):
+        [idxStart, idxEnd] = getRandomDataChunk(0.2, len(prices), delay)
+        print(f"{i}/{iterations} (range {idxStart} - {idxEnd}):")
 
-ratios = []
-ratiosRef = []
-delay = 200
-iterations = 50
-for i in range(iterations): 
-    [idxStart, idxEnd] = getRandomDataChunk(0.2, len(prices), delay)
-    print(f"{i}/{iterations} (range {idxStart} - {idxEnd}):")
+        simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
+        ratio = simulation.simulate(strategy, strategyParams, 1)
+        ratios.append(ratio)
 
-    simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
-    ratio = simulation.simulate(movingAveragesStrategy, 1)
-    ratios.append(ratio)
+        ratioRef = simulation.simulate(holdStrategy, [], 1)
+        ratiosRef.append(ratioRef)
 
-    ratioRef = simulation.simulate(holdStrategy, 1)
-    ratiosRef.append(ratioRef)
+        print("")
 
-    print("")
+    averageRatio = sum(ratios)/len(ratios)
+    print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100)}%")
+    print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100)}%")
+    print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
+    print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
+    print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
+    print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
+    return averageRatio
 
-averageRatio = sum(ratios)/len(ratios)
-
-print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100)}%")
-print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100)}%")
-print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
-print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
-print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
-print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
-
+testStrategy(50, movingAveragesStrategy, [])
 
 plt.show()
