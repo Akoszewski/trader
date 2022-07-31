@@ -62,18 +62,16 @@ class Simulation:
         self.idxStart = idxStart
         self.idxEnd = idxEnd
 
-    def displayResultMsg(self, msg, totalValues, ratio):
+    def displayResultMsg(self, msg, lastValue, ratio):
         percentage = round(ratio * 100)
         if len(msg) == 0:
             msg = "Result"
-        print(f"{msg}: Na koniec masz: {round(totalValues[-1])} dol z zainwestowanych {self.startMoney}"
+        print(f"{msg}: Na koniec masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
                 f" czyli {percentage}%")
 
     def simulate(self, strategy, fractionOfTotalToTrade=1, step=1):
-        totalValues = []
-        moneyValues = []
-        stockValues = []
         account = Account(self.startMoney, self.provision)
+        lastValue = 0
         for i in range(self.idxStart, self.idxEnd, step):
             decision = strategy(self.prices[:i], 15)
             if (decision == "BUY"):
@@ -82,12 +80,11 @@ class Simulation:
             elif (decision == "SELL"):
                 account.sell(account.stock * fractionOfTotalToTrade * self.prices[i], self.prices[i])
                 # print(f"Sell. Curr stock: {self.stock} curr money: {self.money} for price {data[i].close}")
-            totalValues.append(account.totalValue(self.prices[i]))
-            stockValues.append(account.stock * self.prices[i])
-            moneyValues.append(account.money)
-        ratio = totalValues[-1]/self.startMoney
-        self.displayResultMsg(strategy.__name__, totalValues, ratio)
-        return [totalValues, moneyValues, stockValues, ratio]
+            # totalValues.append(account.totalValue(self.prices[i]))
+            lastValue = account.totalValue(self.prices[i])
+        ratio = lastValue/self.startMoney
+        self.displayResultMsg(strategy.__name__, lastValue, ratio)
+        return ratio
 
 def holdStrategy(startBalance, x):
     return "BUY"
@@ -156,29 +153,23 @@ def getRandomDataChunk(fractionOfLength, dataLength, delay):
     return [left, right]
 
 data = readData("btc_every_h.csv")
-# data = readData("HistoricalPrices.csv", [0,1,2,3,4])
 prices = [o.close for o in data]
-# prices = prices[::]
 
 ratios = []
 ratiosRef = []
 delay = 200
-iterations = 100
+iterations = 50
 for i in range(iterations): 
     [idxStart, idxEnd] = getRandomDataChunk(0.2, len(prices), delay)
     print(f"{i}/{iterations} (range {idxStart} - {idxEnd}):")
 
     simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
 
-    [totalValues, moneyValues, stockValues, ratio] = simulation.simulate(movingAveragesStrategy, 1)
+    ratio = simulation.simulate(movingAveragesStrategy, 1)
     ratios.append(ratio)
-    # plt.figure()
-    # plt.plot(range(len(prices) - 15), totalValues, stockValues)
 
-    [totalValues, moneyValues, stockValues, ratioRef] = simulation.simulate(holdStrategy, 1)
+    ratioRef = simulation.simulate(holdStrategy, 1)
     ratiosRef.append(ratioRef)
-    # plt.figure()
-    # plt.plot(range(len(prices) - 15), totalValues, stockValues)
     print("")
 
 
