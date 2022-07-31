@@ -54,11 +54,12 @@ class Account:
         return self.money + self.stock * price
 
 class Simulation:
-    def __init__(self, data, delay, startMoney, provision = 0):
+    def __init__(self, prices, idxStart, idxEnd, startMoney, provision = 0):
         self.prices = prices
         self.startMoney = startMoney
         self.provision = provision
-        self.delay = delay
+        self.idxStart = idxStart
+        self.idxEnd = idxEnd
 
     def displayResultMsg(self, msg, totalValues, ratio):
         percentage = round(ratio * 100)
@@ -72,7 +73,7 @@ class Simulation:
         moneyValues = []
         stockValues = []
         account = Account(self.startMoney, self.provision)
-        for i in range(self.delay, len(self.prices), step):
+        for i in range(self.idxStart, self.idxEnd, step):
             decision = strategy(self.prices[:i], 15)
             if (decision == "BUY"):
                 account.buy(account.money * fractionOfTotalToTrade, self.prices[i])
@@ -141,26 +142,25 @@ def calculateRSI(data, n = 15):
     return 100 - (100/(1 + RS(data, n)))
 
 
-def getNumberedDataChunk(data, num, maxnum):
-    chunkLen = math.floor(len(data) / maxnum)
-    left = num * chunkLen
-    right = num * chunkLen + chunkLen
-    # print(left)
-    # print(right)
-    return data[left:right]
+def getNumberedDataChunk(tradingDataLen, delay, num, maxnum):
+    chunkLen = math.floor(tradingDataLen / maxnum)
+    left = num * chunkLen + delay
+    right = num * chunkLen + chunkLen + delay
+    return [left, right]
 
 
 data = readData("btc_every_h.csv")
 # data = readData("HistoricalPrices.csv", [0,1,2,3,4])
-allPrices = [o.close for o in data]
-# allPrices = allPrices[int(len(allPrices)*0.1):]
+prices = [o.close for o in data]
+# prices = prices[::]
 
 ratios = []
 ratiosRef = []
-maxchunk = 10
-for i in range(maxchunk): 
-    prices = getNumberedDataChunk(allPrices, i, maxchunk)
-    simulation = Simulation(prices, 200, 1000000, 0.001)
+numOfChunks = 10
+delay = 200
+for i in range(numOfChunks - 1): 
+    [idxStart, idxEnd] = getNumberedDataChunk(len(prices), delay, i, numOfChunks)
+    simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
 
     [totalValues, moneyValues, stockValues, ratio] = simulation.simulate(movingAveragesStrategy, 1)
     ratios.append(ratio)
