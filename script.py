@@ -96,9 +96,8 @@ def randomBuySellStrategy(pricesSoFar, params):
     else:
         return "SELL"
     
-def average(data): 
-    avg = sum(data) / len(data) 
-    return avg
+def average(data):
+    return sum(data) / len(data) 
 
 def movingAveragesStrategy(pricesSoFar, params):
     avg50 = average(pricesSoFar[len(pricesSoFar)-params[1]:])
@@ -117,26 +116,22 @@ def rsiStrategy(pricesSoFar, params):
     else:
         return "HOLD"
 
-def MMA(data):
-    n = len(data)
-    mma = data[0]
-    for i in range(1, n):
-        mma = ((n-1)*mma + data[i])/n
-    return mma
-
 def RS(data, n):
     relevantData = data[len(data) - n:len(data)]
     diffsInc = []
     diffsDec = []
     for i in range(1, len(relevantData)):
         diff = relevantData[i] - relevantData[i-1]
-        if diff > 0:
+        if diff >= 0:
             diffsInc.append(diff)
-        elif diff < 0:
+        elif diff <= 0:
             diffsDec.append(-diff)
-    return MMA(diffsInc)/MMA(diffsDec)
+    if len(diffsDec) > 0:
+        return average(diffsInc)/average(diffsDec)
+    else:
+        return 1
 
-def calculateRSI(data, n = 15):
+def calculateRSI(data, n):
     return 100 - (100/(1 + RS(data, n)))
 
 
@@ -155,14 +150,17 @@ def getRandomDataChunk(minFractionOfLength, dataLength, delay, isChunkLengthFixe
         right = random.randint(left + diff, dataLength)
     return [left, right]
 
-data = readData("btc_every_h.csv")
+data = readData("btc.csv")
 prices = [o.close for o in data]
+# prices = prices[len(prices)//2:]
+# plotData(data)
+# plt.show()
 
 def testStrategy(iterations, strategy, strategyParams, delay):
     ratios = []
     ratiosRef = []
     for i in range(iterations):
-        [idxStart, idxEnd] = getRandomDataChunk(0.2, len(prices), delay)
+        [idxStart, idxEnd] = getRandomDataChunk(0.1, len(prices), delay, True)
         print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
         simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
