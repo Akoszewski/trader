@@ -101,8 +101,8 @@ def average(data):
     return avg
 
 def movingAveragesStrategy(pricesSoFar, params):
-    avg50 = average(pricesSoFar[len(pricesSoFar)-50:])
-    avg200 = average(pricesSoFar[len(pricesSoFar)-200:])
+    avg50 = average(pricesSoFar[len(pricesSoFar)-params[1]:])
+    avg200 = average(pricesSoFar[len(pricesSoFar)-params[0]:])
     if (avg50 > avg200):
         return "BUY"
     else:
@@ -158,13 +158,12 @@ def getRandomDataChunk(minFractionOfLength, dataLength, delay, isChunkLengthFixe
 data = readData("btc_every_h.csv")
 prices = [o.close for o in data]
 
-def testStrategy(iterations, strategy, strategyParams):
+def testStrategy(iterations, strategy, strategyParams, delay):
     ratios = []
     ratiosRef = []
-    delay = 200
     for i in range(iterations):
         [idxStart, idxEnd] = getRandomDataChunk(0.2, len(prices), delay)
-        print(f"{i}/{iterations} (range {idxStart} - {idxEnd}):")
+        print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
         simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
         ratio = simulation.simulate(strategy, strategyParams, 1)
@@ -182,8 +181,48 @@ def testStrategy(iterations, strategy, strategyParams):
     print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
     print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
     print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
+    # plt.show()
     return averageRatio
 
-testStrategy(50, movingAveragesStrategy, [])
 
-plt.show()
+modiffier1 = 10
+modiffier2 = 10
+delay = 200 * modiffier1
+result = testStrategy(100, movingAveragesStrategy, [delay, 50 * modiffier2], delay)
+
+# Parameters tuning
+
+# modiffs = []
+# results = []
+# iterations = 30
+# for i in range(iterations):
+#     print(f"Iteration: {i}/{iterations}")
+#     modiffier1 = i + 1
+#     modiffier2 = modiffier1
+#     delay = 200 * modiffier1
+#     result = testStrategy(10, movingAveragesStrategy, [delay, 50 * modiffier2], delay)
+#     modiffs.append([modiffier1, modiffier2])
+#     results.append(result)
+
+# maxResult = max(results)
+# maxIndex = results.index(maxResult)
+# print(f"Best modiffs are: {modiffs[maxIndex]}")
+
+# modiffier1 = 1
+# modiffier2 = 1
+# modiffs = []
+# results = []
+# iterations = 100
+# for i in range(iterations):
+#     print(f"Iteration: {i}/{iterations}")
+#     modiffier1 = random.randint(1, 30)
+#     modiffier2 = random.randint(1, 30)
+#     delay = 200 * modiffier1
+#     result = testStrategy(10, movingAveragesStrategy, [delay, 50 * modiffier2], delay)
+#     modiffs.append([modiffier1, modiffier2])
+#     results.append(result)
+
+# maxResult = max(results)
+# maxIndex = results.index(maxResult)
+# print(f"Best modiffs are: {modiffs[maxIndex]}")
+
