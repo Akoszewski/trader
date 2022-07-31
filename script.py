@@ -146,10 +146,10 @@ def getNumberedDataChunk(tradingDataLen, delay, num, maxnum):
     right = num * chunkLen + chunkLen + delay
     return [left, right]
 
-def getRandomDataChunk(fractionOfLength, dataLength, delay):
-    diff = math.floor(fractionOfLength * (dataLength - delay))
+def getRandomDataChunk(minFractionOfLength, dataLength, delay):
+    diff = math.floor(minFractionOfLength * (dataLength - delay))
     left = random.randint(delay, dataLength - diff)
-    right = random.randint(left, dataLength)
+    right = random.randint(left + diff, dataLength)
     return [left, right]
 
 data = readData("btc_every_h.csv")
@@ -175,6 +175,10 @@ for i in range(iterations):
 
 print(f"Average ratio of start money for chosen strategy: {round(sum(ratios)/len(ratios) * 100)}%")
 print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100)}%")
+print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
+print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
+print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
+print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
 
 
 plt.show()
