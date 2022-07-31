@@ -1,4 +1,5 @@
 from datetime import date
+from pydoc import doc
 import matplotlib.pyplot as plt
 import numpy as np
 import random
@@ -148,6 +149,11 @@ def getNumberedDataChunk(tradingDataLen, delay, num, maxnum):
     right = num * chunkLen + chunkLen + delay
     return [left, right]
 
+def getRandomDataChunk(fractionOfLength, dataLength, delay):
+    diff = math.floor(fractionOfLength * (dataLength - delay))
+    left = random.randint(delay, dataLength - diff)
+    right = random.randint(left, dataLength)
+    return [left, right]
 
 data = readData("btc_every_h.csv")
 # data = readData("HistoricalPrices.csv", [0,1,2,3,4])
@@ -156,10 +162,12 @@ prices = [o.close for o in data]
 
 ratios = []
 ratiosRef = []
-numOfChunks = 10
 delay = 200
-for i in range(numOfChunks - 1): 
-    [idxStart, idxEnd] = getNumberedDataChunk(len(prices), delay, i, numOfChunks)
+iterations = 100
+for i in range(iterations): 
+    [idxStart, idxEnd] = getRandomDataChunk(0.2, len(prices), delay)
+    print(f"{i}/{iterations} (range {idxStart} - {idxEnd}):")
+
     simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
 
     [totalValues, moneyValues, stockValues, ratio] = simulation.simulate(movingAveragesStrategy, 1)
