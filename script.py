@@ -102,9 +102,9 @@ def average(data):
     return sum(data) / len(data) 
 
 def movingAveragesStrategy(pricesSoFar, params):
-    avg50 = average(pricesSoFar[len(pricesSoFar)-params[1]:])
-    avg200 = average(pricesSoFar[len(pricesSoFar)-params[0]:])
-    if (avg50 > avg200):
+    avgShorter = average(pricesSoFar[len(pricesSoFar)-params[1]:])
+    avgLonger = average(pricesSoFar[len(pricesSoFar)-params[0]:])
+    if (avgShorter > avgLonger):
         return "BUY"
     else:
         return "SELL"
@@ -143,8 +143,8 @@ def getNumberedDataChunk(tradingDataLen, delay, num, maxnum):
     right = num * chunkLen + chunkLen + delay
     return [left, right]
 
-def getRandomDataChunk(minFractionOfLength, dataLength, delay, isChunkLengthFixed = False):
-    diff = math.floor(minFractionOfLength * (dataLength - delay))
+def getRandomDataChunk(minChunkLength, dataLength, delay, isChunkLengthFixed = False):
+    diff = minChunkLength
     left = random.randint(delay, dataLength - diff)
     if isChunkLengthFixed:
         right = left + diff
@@ -152,11 +152,11 @@ def getRandomDataChunk(minFractionOfLength, dataLength, delay, isChunkLengthFixe
         right = random.randint(left + diff, dataLength)
     return [left, right]
 
-def testStrategy(iterations, strategy, strategyParams, chunkSizeAsFraction, delay):
+def testStrategy(iterations, strategy, strategyParams, chunkSize, delay):
     ratios = []
     ratiosRef = []
     for i in range(iterations):
-        [idxStart, idxEnd] = getRandomDataChunk(chunkSizeAsFraction, len(prices), delay, True)
+        [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), delay, True)
         print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
         simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001, False)
@@ -187,19 +187,22 @@ def combinedStrategy(pricesSoFar, params):
     else:
         return "HOLD"
 
+def daysToIntervals(days, intervalsPerDay = 24):
+    return math.floor(days * intervalsPerDay)
+
+
+
 data = readData("btc.csv")
 prices = [o.close for o in data]
-# btcDataLen = 16487
-# prices = prices[len(prices) - btcDataLen:]
 
 # plt.plot(prices)
 # plt.show()
-chunkSizeAsFraction = 0.2
-# modiffier1 = chunkSizeAsFraction * ratioToBtc * 50 # parameters to moving avg depend on planned time of trading
-modiffier1 = 6
-modiffier2 = modiffier1
-delay = math.floor(200 * modiffier1) # delay must be at least the length of the data for calculating average
-result = testStrategy(30, combinedStrategy, [delay, math.floor(50 * modiffier2)], chunkSizeAsFraction, delay)
+chunkSize = daysToIntervals(100)
+
+smaParam1 = daysToIntervals(50)
+smaParam2 = daysToIntervals(12.5)
+delay = smaParam1 # delay must be at least the length of the data for calculating average
+result = testStrategy(30, combinedStrategy, [smaParam1, smaParam2], chunkSize, delay)
 
 # delay = math.floor(len(prices)*0.1) * 8
 # [idxStart, idxEnd] = [delay, delay + math.floor(len(prices)*0.1)]
