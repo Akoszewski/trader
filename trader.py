@@ -113,7 +113,7 @@ def rsiStrategy(pricesSoFar, params):
         return "HOLD"
 
 def RS(data, n):
-    relevantData = data[len(data) - n:len(data)]
+    relevantData = data[len(data) - n:]
     diffsInc = []
     diffsDec = []
     for i in range(1, len(relevantData)):
@@ -122,7 +122,7 @@ def RS(data, n):
             diffsInc.append(diff)
         elif diff <= 0:
             diffsDec.append(-diff)
-    if len(diffsDec) > 0:
+    if len(diffsDec) and len(diffsInc) > 0:
         return average(diffsInc)/average(diffsDec)
     else:
         return 1
@@ -198,7 +198,7 @@ smaParam2 = daysToIntervals(12.5)
 [rsiParam1, rsiParam2, rsiParam3] = [daysToIntervals(0.6), 20, 80]
 startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
-result = testStrategy(30, combinedStrategy, combinedStrategyParams, chunkSize, startDelay)
+result = testStrategy(100, combinedStrategy, combinedStrategyParams, chunkSize, startDelay)
 
 # Parameters tuning
 
