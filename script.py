@@ -45,22 +45,25 @@ class Account:
         if self.money >= amountOfMoney:
             self.money -= amountOfMoney
             self.stock += (1 - self.provision) * amountOfMoney / price
+            # print(f"Buy for price {price}")
 
     def sell(self, amountOfMoney, price):
         if self.stock >= amountOfMoney / price:
             self.money += (1 - self.provision) * amountOfMoney
             self.stock -= amountOfMoney / price
+            # print(f"Sell for price {price}")
 
     def totalValue(self, price):
         return self.money + self.stock * price
 
 class Simulation:
-    def __init__(self, prices, idxStart, idxEnd, startMoney, provision = 0):
+    def __init__(self, prices, idxStart, idxEnd, startMoney, provision = 0, silent = False):
         self.prices = prices
         self.startMoney = startMoney
         self.provision = provision
         self.idxStart = idxStart
         self.idxEnd = idxEnd
+        self.silent = silent
 
     def displayResultMsg(self, msg, lastValue, ratio):
         percentage = round(ratio * 100)
@@ -76,14 +79,13 @@ class Simulation:
             decision = strategy(self.prices[:i], strategyParams)
             if (decision == "BUY"):
                 account.buy(account.money * fractionOfTotalToTrade, self.prices[i])
-                # print(f"Buy. Curr stock: {self.stock} curr money: {self.money} for price {data[i].close}")
             elif (decision == "SELL"):
                 account.sell(account.stock * fractionOfTotalToTrade * self.prices[i], self.prices[i])
-                # print(f"Sell. Curr stock: {self.stock} curr money: {self.money} for price {data[i].close}")
             # totalValues.append(account.totalValue(self.prices[i]))
             lastValue = account.totalValue(self.prices[i])
         ratio = lastValue/self.startMoney
-        self.displayResultMsg(strategy.__name__, lastValue, ratio)
+        if self.silent == False:
+            self.displayResultMsg(strategy.__name__, lastValue, ratio)
         return ratio
 
 def holdStrategy(pricesSoFar, params):
@@ -150,26 +152,19 @@ def getRandomDataChunk(minFractionOfLength, dataLength, delay, isChunkLengthFixe
         right = random.randint(left + diff, dataLength)
     return [left, right]
 
-data = readData("btc.csv")
-prices = [o.close for o in data]
-# prices = prices[len(prices)//2:]
-# plotData(data)
-# plt.show()
-
-def testStrategy(iterations, strategy, strategyParams, delay):
+def testStrategy(iterations, strategy, strategyParams, chunkSizeAsFraction, delay):
     ratios = []
     ratiosRef = []
     for i in range(iterations):
-        [idxStart, idxEnd] = getRandomDataChunk(0.1, len(prices), delay, True)
+        [idxStart, idxEnd] = getRandomDataChunk(chunkSizeAsFraction, len(prices), delay, True)
         print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
-        simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
+        simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001, False)
         ratio = simulation.simulate(strategy, strategyParams, 1)
         ratios.append(ratio)
 
         ratioRef = simulation.simulate(holdStrategy, [], 1)
         ratiosRef.append(ratioRef)
-
         print("")
 
     averageRatio = sum(ratios)/len(ratios)
@@ -179,14 +174,40 @@ def testStrategy(iterations, strategy, strategyParams, delay):
     print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
     print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
     print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
-    # plt.show()
+    print("")
     return averageRatio
 
+def combinedStrategy(pricesSoFar, params):
+    smaDecision = movingAveragesStrategy(pricesSoFar, params)
+    rsiDecision = rsiStrategy(pricesSoFar, params)
+    if smaDecision == "BUY" and rsiDecision == "BUY":
+        return "BUY"
+    elif smaDecision == "SELL" and rsiDecision == "SELL":
+        return "SELL"
+    else:
+        return "HOLD"
 
-modiffier1 = 10
-modiffier2 = 10
-delay = 200 * modiffier1
-result = testStrategy(100, movingAveragesStrategy, [delay, 50 * modiffier2], delay)
+data = readData("btc.csv")
+prices = [o.close for o in data]
+# btcDataLen = 16487
+# prices = prices[len(prices) - btcDataLen:]
+
+# plt.plot(prices)
+# plt.show()
+chunkSizeAsFraction = 0.2
+# modiffier1 = chunkSizeAsFraction * ratioToBtc * 50 # parameters to moving avg depend on planned time of trading
+modiffier1 = 6
+modiffier2 = modiffier1
+delay = math.floor(200 * modiffier1) # delay must be at least the length of the data for calculating average
+result = testStrategy(30, combinedStrategy, [delay, math.floor(50 * modiffier2)], chunkSizeAsFraction, delay)
+
+# delay = math.floor(len(prices)*0.1) * 8
+# [idxStart, idxEnd] = [delay, delay + math.floor(len(prices)*0.1)]
+# simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
+# [ratio, isHoldingVect] = simulation.simulate(movingAveragesStrategy, [200 * 5, 50 * 5], 1)
+# plt.plot(prices[idxStart:idxEnd])
+# plt.plot(isHoldingVect)
+# plt.show()
 
 # Parameters tuning
 
@@ -194,7 +215,7 @@ result = testStrategy(100, movingAveragesStrategy, [delay, 50 * modiffier2], del
 # results = []
 # iterations = 30
 # for i in range(iterations):
-#     print(f"Iteration: {i}/{iterations}")
+#     print(f"Iteration: {i+1}/{iterations}")
 #     modiffier1 = i + 1
 #     modiffier2 = modiffier1
 #     delay = 200 * modiffier1
@@ -205,6 +226,8 @@ result = testStrategy(100, movingAveragesStrategy, [delay, 50 * modiffier2], del
 # maxResult = max(results)
 # maxIndex = results.index(maxResult)
 # print(f"Best modiffs are: {modiffs[maxIndex]}")
+
+# Two dim parameters tuning
 
 # modiffier1 = 1
 # modiffier2 = 1
