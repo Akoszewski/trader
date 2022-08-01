@@ -110,10 +110,10 @@ def movingAveragesStrategy(pricesSoFar, params):
         return "SELL"
 
 def rsiStrategy(pricesSoFar, params):
-    rsi = calculateRSI(pricesSoFar, 15)
-    if (rsi > 80):
+    rsi = calculateRSI(pricesSoFar, params[0])
+    if (rsi > params[2]):
         return "SELL"
-    elif (rsi < 20):
+    elif (rsi < params[1]):
         return "BUY"
     else:
         return "HOLD"
@@ -152,11 +152,11 @@ def getRandomDataChunk(minChunkLength, dataLength, delay, isChunkLengthFixed = F
         right = random.randint(left + diff, dataLength)
     return [left, right]
 
-def testStrategy(iterations, strategy, strategyParams, chunkSize, delay):
+def testStrategy(iterations, strategy, strategyParams, chunkSize, startDelay):
     ratios = []
     ratiosRef = []
     for i in range(iterations):
-        [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), delay, True)
+        [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), startDelay, True)
         print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
         simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001, False)
@@ -179,7 +179,7 @@ def testStrategy(iterations, strategy, strategyParams, chunkSize, delay):
 
 def combinedStrategy(pricesSoFar, params):
     smaDecision = movingAveragesStrategy(pricesSoFar, params)
-    rsiDecision = rsiStrategy(pricesSoFar, params)
+    rsiDecision = rsiStrategy(pricesSoFar, [daysToIntervals(0.6), 20, 80])
     if smaDecision == "BUY" and rsiDecision == "BUY":
         return "BUY"
     elif smaDecision == "SELL" and rsiDecision == "SELL":
@@ -191,8 +191,7 @@ def daysToIntervals(days, intervalsPerDay = 24):
     return math.floor(days * intervalsPerDay)
 
 
-
-data = readData("btc.csv")
+data = readData("./data/hourly/btc.csv")
 prices = [o.close for o in data]
 
 # plt.plot(prices)
@@ -201,8 +200,12 @@ chunkSize = daysToIntervals(100)
 
 smaParam1 = daysToIntervals(50)
 smaParam2 = daysToIntervals(12.5)
-delay = smaParam1 # delay must be at least the length of the data for calculating average
-result = testStrategy(30, combinedStrategy, [smaParam1, smaParam2], chunkSize, delay)
+startDelay = smaParam1 # delay must be at least the length of the data for calculating average
+result = testStrategy(30, combinedStrategy, [smaParam1, smaParam2], chunkSize, startDelay)
+
+# [rsiParam1, rsiParam2, rsiParam3] = [daysToIntervals(0.6), 20, 80]
+# result = testStrategy(30, rsiStrategy, [rsiParam1, rsiParam2, rsiParam3], chunkSize, rsiParam1)
+
 
 # delay = math.floor(len(prices)*0.1) * 8
 # [idxStart, idxEnd] = [delay, delay + math.floor(len(prices)*0.1)]

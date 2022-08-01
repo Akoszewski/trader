@@ -1,1 +1,1 @@
-python3 script.py
+python3 trader.py
