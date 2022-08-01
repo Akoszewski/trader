@@ -28,12 +28,6 @@ def readData(filename, indices = [1,3,4,5,6]):
             data.append(DataPoint(row, indices))
     return data
 
-
-def plotData(data):
-    x = range(len(data))
-    prices = [o.open for o in data]
-    plt.plot(x, prices)
-
 class Account:
     def __init__(self, startMoney, provision):
         self.startMoney = startMoney
@@ -152,6 +146,20 @@ def getRandomDataChunk(minChunkLength, dataLength, delay, isChunkLengthFixed = F
         right = random.randint(left + diff, dataLength)
     return [left, right]
 
+
+def daysToIntervals(days, intervalsPerDay = 24):
+    return math.floor(days * intervalsPerDay)
+
+def combinedStrategy(pricesSoFar, params):
+    smaDecision = movingAveragesStrategy(pricesSoFar, params)
+    rsiDecision = rsiStrategy(pricesSoFar, params[2:])
+    if smaDecision == "BUY" and rsiDecision == "BUY":
+        return "BUY"
+    elif smaDecision == "SELL" and rsiDecision == "SELL":
+        return "SELL"
+    else:
+        return "HOLD"
+
 def testStrategy(iterations, strategy, strategyParams, chunkSize, startDelay):
     ratios = []
     ratiosRef = []
@@ -177,43 +185,20 @@ def testStrategy(iterations, strategy, strategyParams, chunkSize, startDelay):
     print("")
     return averageRatio
 
-def combinedStrategy(pricesSoFar, params):
-    smaDecision = movingAveragesStrategy(pricesSoFar, params)
-    rsiDecision = rsiStrategy(pricesSoFar, [daysToIntervals(0.6), 20, 80])
-    if smaDecision == "BUY" and rsiDecision == "BUY":
-        return "BUY"
-    elif smaDecision == "SELL" and rsiDecision == "SELL":
-        return "SELL"
-    else:
-        return "HOLD"
-
-def daysToIntervals(days, intervalsPerDay = 24):
-    return math.floor(days * intervalsPerDay)
-
-
 data = readData("./data/hourly/btc.csv")
 prices = [o.close for o in data]
 
 # plt.plot(prices)
 # plt.show()
+
 chunkSize = daysToIntervals(100)
 
 smaParam1 = daysToIntervals(50)
 smaParam2 = daysToIntervals(12.5)
-startDelay = smaParam1 # delay must be at least the length of the data for calculating average
-result = testStrategy(30, combinedStrategy, [smaParam1, smaParam2], chunkSize, startDelay)
-
-# [rsiParam1, rsiParam2, rsiParam3] = [daysToIntervals(0.6), 20, 80]
-# result = testStrategy(30, rsiStrategy, [rsiParam1, rsiParam2, rsiParam3], chunkSize, rsiParam1)
-
-
-# delay = math.floor(len(prices)*0.1) * 8
-# [idxStart, idxEnd] = [delay, delay + math.floor(len(prices)*0.1)]
-# simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001)
-# [ratio, isHoldingVect] = simulation.simulate(movingAveragesStrategy, [200 * 5, 50 * 5], 1)
-# plt.plot(prices[idxStart:idxEnd])
-# plt.plot(isHoldingVect)
-# plt.show()
+[rsiParam1, rsiParam2, rsiParam3] = [daysToIntervals(0.6), 20, 80]
+startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
+combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
+result = testStrategy(30, combinedStrategy, combinedStrategyParams, chunkSize, startDelay)
 
 # Parameters tuning
 
