@@ -34,17 +34,20 @@ class Account:
         self.money = self.startMoney
         self.stock = 0
         self.provision = provision
+        self.trades = 0
 
     def buy(self, amountOfMoney, price):
-        if self.money >= amountOfMoney:
+        if self.money > 0:
             self.money -= amountOfMoney
             self.stock += (1 - self.provision) * amountOfMoney / price
+            self.trades += 1
             # print(f"Buy for price {price}")
 
     def sell(self, amountOfMoney, price):
-        if self.stock >= amountOfMoney / price:
+        if self.stock > 0:
             self.money += (1 - self.provision) * amountOfMoney
             self.stock -= amountOfMoney / price
+            self.trades += 1
             # print(f"Sell for price {price}")
 
     def totalValue(self, price):
@@ -58,12 +61,13 @@ class Simulation:
         self.idxStart = idxStart
         self.idxEnd = idxEnd
         self.silent = silent
+        self.trades = 0
 
-    def displayResultMsg(self, msg, lastValue, ratio):
+    def displayResultMsg(self, msg, lastValue, ratio, trades):
         percentage = round(ratio * 100)
         if len(msg) == 0:
             msg = "Result"
-        print(f"{msg}: Na koniec masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
+        print(f"{msg}: Na koniec po {trades} tranzakcjach masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
                 f" czyli {percentage}%")
 
     def simulate(self, strategy, strategyParams, fractionOfTotalToTrade=1, step=1):
@@ -78,8 +82,9 @@ class Simulation:
             # totalValues.append(account.totalValue(self.prices[i]))
             lastValue = account.totalValue(self.prices[i])
         ratio = lastValue/self.startMoney
+        self.trades = account.trades
         if self.silent == False:
-            self.displayResultMsg(strategy.__name__, lastValue, ratio)
+            self.displayResultMsg(strategy.__name__, lastValue, ratio, self.trades)
         return ratio
 
 def holdStrategy(pricesSoFar, params):
@@ -191,12 +196,13 @@ prices = [o.close for o in data]
 # plt.plot(prices)
 # plt.show()
 
-chunkSize = daysToIntervals(100)
+chunkSize = daysToIntervals(30)
 
 smaParam1 = daysToIntervals(50)
-smaParam2 = daysToIntervals(12.5)
+smaParam2 = daysToIntervals(12)
 [rsiParam1, rsiParam2, rsiParam3] = [daysToIntervals(0.6), 20, 80]
-startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
+startDelay = daysToIntervals(600)
+# startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
 result = testStrategy(100, combinedStrategy, combinedStrategyParams, chunkSize, startDelay)
 
