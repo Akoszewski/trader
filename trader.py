@@ -165,30 +165,38 @@ def combinedStrategy(pricesSoFar, params):
     else:
         return "HOLD"
 
-def testStrategy(iterations, strategy, strategyParams, chunkSize, startDelay):
-    ratios = []
-    ratiosRef = []
-    for i in range(iterations):
+
+class StrategyTester:
+    def doSimulation(i, iterations, strategy, strategyParams, chunkSize, startDelay):
         [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), startDelay, True)
         print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
         simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001, False)
         ratio = simulation.simulate(strategy, strategyParams, 1)
-        ratios.append(ratio)
 
         ratioRef = simulation.simulate(holdStrategy, [], 1)
-        ratiosRef.append(ratioRef)
         print("")
+        return [ratio, ratioRef]
 
-    averageRatio = sum(ratios)/len(ratios)
-    print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100)}%")
-    print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100)}%")
-    print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
-    print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
-    print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
-    print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
-    print("")
-    return averageRatio
+    def testStrategy(iterations, strategy, strategyParams, chunkSize, startDelay):
+        ratios = []
+        ratiosRef = []
+        for i in range(iterations):
+            [ratio, ratioRef] = StrategyTester.doSimulation(i, iterations, strategy, strategyParams, chunkSize, startDelay)
+            ratios.append(ratio)
+            ratiosRef.append(ratioRef)
+
+        averageRatio = sum(ratios)/len(ratios)
+        print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100)}%")
+        print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100)}%")
+        print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
+        print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
+        print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
+        print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
+        print("")
+        return averageRatio
+
+
 
 data = readData("./data/hourly/btc.csv")
 prices = [o.close for o in data]
@@ -201,46 +209,8 @@ chunkSize = daysToIntervals(30)
 smaParam1 = daysToIntervals(50)
 smaParam2 = daysToIntervals(12)
 [rsiParam1, rsiParam2, rsiParam3] = [daysToIntervals(0.6), 20, 80]
-# startDelay = daysToIntervals(600)
-startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
+startDelay = daysToIntervals(365)
+# startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
-result = testStrategy(100, combinedStrategy, combinedStrategyParams, chunkSize, startDelay)
-
-# Parameters tuning
-
-# modiffs = []
-# results = []
-# iterations = 30
-# for i in range(iterations):
-#     print(f"Iteration: {i+1}/{iterations}")
-#     modiffier1 = i + 1
-#     modiffier2 = modiffier1
-#     delay = 200 * modiffier1
-#     result = testStrategy(10, movingAveragesStrategy, [delay, 50 * modiffier2], delay)
-#     modiffs.append([modiffier1, modiffier2])
-#     results.append(result)
-
-# maxResult = max(results)
-# maxIndex = results.index(maxResult)
-# print(f"Best modiffs are: {modiffs[maxIndex]}")
-
-# Two dim parameters tuning
-
-# modiffier1 = 1
-# modiffier2 = 1
-# modiffs = []
-# results = []
-# iterations = 100
-# for i in range(iterations):
-#     print(f"Iteration: {i}/{iterations}")
-#     modiffier1 = random.randint(1, 30)
-#     modiffier2 = random.randint(1, 30)
-#     delay = 200 * modiffier1
-#     result = testStrategy(10, movingAveragesStrategy, [delay, 50 * modiffier2], delay)
-#     modiffs.append([modiffier1, modiffier2])
-#     results.append(result)
-
-# maxResult = max(results)
-# maxIndex = results.index(maxResult)
-# print(f"Best modiffs are: {modiffs[maxIndex]}")
+result = StrategyTester.testStrategy(100, combinedStrategy, combinedStrategyParams, chunkSize, startDelay)
 
