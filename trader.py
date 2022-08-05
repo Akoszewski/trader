@@ -201,8 +201,8 @@ chunkSize = daysToIntervals(30)
 smaParam1 = daysToIntervals(50)
 smaParam2 = daysToIntervals(12)
 [rsiParam1, rsiParam2, rsiParam3] = [daysToIntervals(0.6), 20, 80]
-startDelay = daysToIntervals(600)
-# startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
+# startDelay = daysToIntervals(600)
+startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
 result = testStrategy(100, combinedStrategy, combinedStrategyParams, chunkSize, startDelay)
 
