@@ -6,38 +6,49 @@ import random
 import math
 
 # unix, date, symbol, open, high, low, close, VolumeBTC, VolumeUSDT, tradecount
-class DataPoint:
-    def __init__(self, dataRow, indices):
-        self.date = dataRow[indices[0]]
-        self.open = float(dataRow[indices[1]])
-        self.high = float(dataRow[indices[2]])
-        self.low = float(dataRow[indices[3]])
-        self.close = float(dataRow[indices[4]])
-        self.sma20 = -1
-        self.sma50 = -1
-        self.sma100 = -1
-        self.sma200 = -1
+class DataPoints:
+    def __init__(self, rawData, indices):
+        self.dates = []
+        self.opens = []
+        self.highs = []
+        self.lows = []
+        self.closes = []
+        for row in reversed(rawData):
+            if row[0] == '#':
+                continue
+            row = row.split(",")
+            self.dates.append(row[indices[0]])
+            self.opens.append(float(row[indices[1]]))
+            self.highs.append(float(row[indices[2]]))
+            self.lows.append(float(row[indices[3]]))
+            self.closes.append(float(row[indices[4]]))
+            self.sma20 = []
+            self.sma50 = []
+            self.sma100 = []
+            self.sma200 = []
 
-    def printDataPoint(self):
-        print(f"Date: {self.date} open: {self.open} h: {self.high} l: {self.low} close: {self.close}")
+    # def printDataPoint(self):
+        # print(f"Date: {self.date} open: {self.open} h: {self.high} l: {self.low} close: {self.close}")
     
-    def initTechnicals(self, prices, i):
-        if i%1000 == 0:
-            print(f"calculating technicals {i}/{len(prices)}")
-        self.sma20 = average(prices[i - 20:i])
-        self.sma50 = average(prices[i - 50:i])
-        self.sma100 = average(prices[i - 100:i])
-        self.sma200 = average(prices[i - 200:i])
+    def initTechnicals(self):
+        print(f"Calculating technicals...")
+        prices = self.closes
+        self.sma20 = moving_average(prices, 20)
+        print(len(self.sma20))
+        print(len(self.closes))
+        self.sma50 = moving_average(prices, 50)
+        self.sma100 = moving_average(prices, 100)
+        self.sma200 = moving_average(prices, 200)
+
+def moving_average(x, n):
+    padding = [0] * (n - 1)
+    return np.concatenate((padding, np.convolve(x, np.ones(n)/n, mode='valid')))
 
 def readData(filename, indices = [1,3,4,5,6]):
     data = []
     with open(filename, "r") as f:
         rawData = f.readlines()
-        for row in reversed(rawData):
-            if row[0] == '#':
-                continue
-            row = row.split(",")
-            data.append(DataPoint(row, indices))
+        data = DataPoints(rawData, indices)
     return data
 
 class Account:
@@ -190,13 +201,13 @@ def combinedStrategy(pricesSoFar, params):
 #         return "HOLD"
 
 def majorMovingAveragesStrategy(data, i, strategyParams):
-    sma20 = data[i].sma20
-    sma50 = data[i].sma50
-    sma100 = data[i].sma100
-    sma200 = data[i].sma200
-    if data[i].close > sma20 and data[i].close > sma50 and data[i].close > sma100 and data[i].close > sma200:
+    sma20 = data.sma20[i]
+    sma50 = data.sma50[i]
+    sma100 = data.sma100[i]
+    sma200 = data.sma200[i]
+    if data.closes[i] > sma20 and data.closes[i] > sma50 and data.closes[i] > sma100 and data.closes[i] > sma200:
         return "BUY"
-    elif data[i].close < sma20 and data[i].close < sma50 and data[i].close < sma100 and data[i].close < sma200:
+    elif data.closes[i] < sma20 and data.closes[i] < sma50 and data.closes[i] < sma100 and data.closes[i] < sma200:
         return "SELL"
     else:
         return "HOLD"
@@ -209,7 +220,7 @@ class StrategyTester:
         [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), startDelay, True)
         print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
-        simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0, False)
+        simulation = Simulation(prices, idxStart, idxEnd - 1, 1000000, 0.00, False)
         ratio = simulation.simulate(strategy, data, strategyParams, 1)
 
         ratioRef = simulation.simulate(holdStrategy, data, [], 1)
@@ -225,8 +236,8 @@ class StrategyTester:
             ratiosRef.append(ratioRef)
 
         averageRatio = sum(ratios)/len(ratios)
-        print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100)}%")
-        print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100)}%")
+        print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100, 2)}%")
+        print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100, 2)}%")
         print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
         print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
         print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
@@ -237,11 +248,10 @@ class StrategyTester:
 
 
 # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
-data = readData("./data/hourly/eth.csv", [0, 2, 3, 4, 5])
-prices = [o.close for o in data]
+data = readData("./data/hourly/eth.csv")
+prices = data.closes
 
-for i in range(200, len(data)):
-    data[i].initTechnicals(prices, i)
+data.initTechnicals()
 
 # plt.plot(prices)
 # plt.show()
@@ -251,7 +261,7 @@ chunkSize = daysToIntervals(300)
 smaParam1 = 10
 smaParam2 = 1
 [rsiParam1, rsiParam2, rsiParam3] = [14, 30, 70]
-startDelay = daysToIntervals(365)
+startDelay = daysToIntervals(200)
 # startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
 rsiParams = [rsiParam1, rsiParam2, rsiParam3]
