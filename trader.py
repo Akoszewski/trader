@@ -164,6 +164,19 @@ def combinedStrategy(pricesSoFar, params):
         return "SELL"
     else:
         return "HOLD"
+    
+def majorMovingAveragesStrategy(pricesSoFar, params):
+    sma20 = movingAveragesStrategy(pricesSoFar, [20, 1])
+    sma50 = movingAveragesStrategy(pricesSoFar, [50, 1])
+    sma100 = movingAveragesStrategy(pricesSoFar, [50, 1])
+    sma200 = movingAveragesStrategy(pricesSoFar, [50, 1])
+    if sma20 == "BUY" and sma50 == "BUY" and sma100 == "BUY" and sma200 == "BUY":
+        return "BUY"
+    elif sma20 == "SELL" and sma50 == "SELL" and sma100 == "SELL" and sma200 == "SELL":
+        return "SELL"
+    else:
+        return "HOLD"
+
 
 
 class StrategyTester:
@@ -171,7 +184,7 @@ class StrategyTester:
         [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), startDelay, True)
         print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
-        simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0.001, False)
+        simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0, False)
         ratio = simulation.simulate(strategy, strategyParams, 1)
 
         ratioRef = simulation.simulate(holdStrategy, [], 1)
@@ -198,19 +211,19 @@ class StrategyTester:
 
 
 
-data = readData("./data/hourly/btc.csv")
+data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
 prices = [o.close for o in data]
 
 # plt.plot(prices)
 # plt.show()
 
-chunkSize = daysToIntervals(30)
+chunkSize = daysToIntervals(300)
 
-smaParam1 = daysToIntervals(50)
-smaParam2 = daysToIntervals(12)
-[rsiParam1, rsiParam2, rsiParam3] = [daysToIntervals(0.6), 20, 80]
+smaParam1 = 10
+smaParam2 = 1
+[rsiParam1, rsiParam2, rsiParam3] = [14, 30, 70]
 startDelay = daysToIntervals(365)
 # startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
-result = StrategyTester.testStrategy(100, combinedStrategy, combinedStrategyParams, chunkSize, startDelay)
-
+rsiParams = [rsiParam1, rsiParam2, rsiParam3]
+result = StrategyTester.testStrategy(10, majorMovingAveragesStrategy, rsiParams, chunkSize, startDelay)
