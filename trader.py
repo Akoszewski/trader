@@ -13,9 +13,21 @@ class DataPoint:
         self.high = float(dataRow[indices[2]])
         self.low = float(dataRow[indices[3]])
         self.close = float(dataRow[indices[4]])
+        self.sma20 = -1
+        self.sma50 = -1
+        self.sma100 = -1
+        self.sma200 = -1
 
     def printDataPoint(self):
         print(f"Date: {self.date} open: {self.open} h: {self.high} l: {self.low} close: {self.close}")
+    
+    def initTechnicals(self, prices, i):
+        if i%1000 == 0:
+            print(f"calculating technicals {i}/{len(prices)}")
+        self.sma20 = average(prices[i - 20:i])
+        self.sma50 = average(prices[i - 50:i])
+        self.sma100 = average(prices[i - 100:i])
+        self.sma200 = average(prices[i - 200:i])
 
 def readData(filename, indices = [1,3,4,5,6]):
     data = []
@@ -70,11 +82,11 @@ class Simulation:
         print(f"{msg}: Na koniec po {trades} tranzakcjach masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
                 f" czyli {percentage}%")
 
-    def simulate(self, strategy, strategyParams, fractionOfTotalToTrade=1, step=1):
+    def simulate(self, strategy, data, strategyParams, fractionOfTotalToTrade=1, step=1):
         account = Account(self.startMoney, self.provision)
         lastValue = 0
         for i in range(self.idxStart, self.idxEnd, step):
-            decision = strategy(self.prices[:i], strategyParams)
+            decision = strategy(data, i, strategyParams)
             if (decision == "BUY"):
                 account.buy(account.money * fractionOfTotalToTrade, self.prices[i])
             elif (decision == "SELL"):
@@ -87,7 +99,7 @@ class Simulation:
             self.displayResultMsg(strategy.__name__, lastValue, ratio, self.trades)
         return ratio
 
-def holdStrategy(pricesSoFar, params):
+def holdStrategy(data, pricesSoFar, params):
     return "BUY"
 
 # Codzienie kupuje za x dolcow
@@ -165,37 +177,47 @@ def combinedStrategy(pricesSoFar, params):
     else:
         return "HOLD"
     
-def majorMovingAveragesStrategy(pricesSoFar, params):
-    sma20 = movingAveragesStrategy(pricesSoFar, [20, 1])
-    sma50 = movingAveragesStrategy(pricesSoFar, [50, 1])
-    sma100 = movingAveragesStrategy(pricesSoFar, [50, 1])
-    sma200 = movingAveragesStrategy(pricesSoFar, [50, 1])
-    if sma20 == "BUY" and sma50 == "BUY" and sma100 == "BUY" and sma200 == "BUY":
+# def majorMovingAveragesStrategy(pricesSoFar, params):
+#     sma20 = movingAveragesStrategy(pricesSoFar, [20, 1])
+#     sma50 = movingAveragesStrategy(pricesSoFar, [50, 1])
+#     sma100 = movingAveragesStrategy(pricesSoFar, [100, 1])
+#     sma200 = movingAveragesStrategy(pricesSoFar, [200, 1])
+#     if sma20 == "BUY" and sma50 == "BUY" and sma100 == "BUY" and sma200 == "BUY":
+#         return "BUY"
+#     elif sma20 == "SELL" and sma50 == "SELL" and sma100 == "SELL" and sma200 == "SELL":
+#         return "SELL"
+#     else:
+#         return "HOLD"
+
+def majorMovingAveragesStrategy(data, i, strategyParams):
+    sma20 = data[i].sma20
+    sma50 = data[i].sma50
+    sma100 = data[i].sma100
+    sma200 = data[i].sma200
+    if data[i].close > sma20 and data[i].close > sma50 and data[i].close > sma100 and data[i].close > sma200:
         return "BUY"
-    elif sma20 == "SELL" and sma50 == "SELL" and sma100 == "SELL" and sma200 == "SELL":
+    elif data[i].close < sma20 and data[i].close < sma50 and data[i].close < sma100 and data[i].close < sma200:
         return "SELL"
     else:
         return "HOLD"
 
-
-
 class StrategyTester:
-    def doSimulation(i, iterations, strategy, strategyParams, chunkSize, startDelay):
+    def doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay):
         [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), startDelay, True)
         print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
         simulation = Simulation(prices, idxStart, idxEnd, 1000000, 0, False)
-        ratio = simulation.simulate(strategy, strategyParams, 1)
+        ratio = simulation.simulate(strategy, data, strategyParams, 1)
 
-        ratioRef = simulation.simulate(holdStrategy, [], 1)
+        ratioRef = simulation.simulate(holdStrategy, data, [], 1)
         print("")
         return [ratio, ratioRef]
 
-    def testStrategy(iterations, strategy, strategyParams, chunkSize, startDelay):
+    def testStrategy(iterations, strategy, data, strategyParams, chunkSize, startDelay):
         ratios = []
         ratiosRef = []
         for i in range(iterations):
-            [ratio, ratioRef] = StrategyTester.doSimulation(i, iterations, strategy, strategyParams, chunkSize, startDelay)
+            [ratio, ratioRef] = StrategyTester.doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay)
             ratios.append(ratio)
             ratiosRef.append(ratioRef)
 
@@ -214,6 +236,9 @@ class StrategyTester:
 data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
 prices = [o.close for o in data]
 
+for i in range(200, len(data)):
+    data[i].initTechnicals(prices, i)
+
 # plt.plot(prices)
 # plt.show()
 
@@ -226,4 +251,4 @@ startDelay = daysToIntervals(365)
 # startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
 rsiParams = [rsiParam1, rsiParam2, rsiParam3]
-result = StrategyTester.testStrategy(10, majorMovingAveragesStrategy, rsiParams, chunkSize, startDelay)
+result = StrategyTester.testStrategy(100, majorMovingAveragesStrategy, data, rsiParams, chunkSize, startDelay)
