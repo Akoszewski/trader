@@ -201,6 +201,9 @@ def majorMovingAveragesStrategy(data, i, strategyParams):
     else:
         return "HOLD"
 
+# majorMovingAveragesStrategyAI(data, i, strategyParams):
+#     svm()
+
 class StrategyTester:
     def doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay):
         [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), startDelay, True)
@@ -233,7 +236,8 @@ class StrategyTester:
 
 
 
-data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
+# data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
+data = readData("./data/hourly/eth.csv", [0, 2, 3, 4, 5])
 prices = [o.close for o in data]
 
 for i in range(200, len(data)):
@@ -251,4 +255,5 @@ startDelay = daysToIntervals(365)
 # startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
 rsiParams = [rsiParam1, rsiParam2, rsiParam3]
+
 result = StrategyTester.testStrategy(100, majorMovingAveragesStrategy, data, rsiParams, chunkSize, startDelay)
