@@ -26,6 +26,10 @@ class DataPoints:
             self.sma50 = []
             self.sma100 = []
             self.sma200 = []
+            self.ema20 = []
+            self.ema50 = []
+            self.ema100 = []
+            self.ema200 = []
 
     # def printDataPoint(self):
         # print(f"Date: {self.date} open: {self.open} h: {self.high} l: {self.low} close: {self.close}")
@@ -34,15 +38,36 @@ class DataPoints:
         print(f"Calculating technicals...")
         prices = self.closes
         self.sma20 = moving_average(prices, 20)
-        print(len(self.sma20))
-        print(len(self.closes))
         self.sma50 = moving_average(prices, 50)
         self.sma100 = moving_average(prices, 100)
         self.sma200 = moving_average(prices, 200)
+        self.ema20 = moving_average_exp(prices, 20)
+        self.ema50 = moving_average_exp(prices, 50)
+        self.ema100 = moving_average_exp(prices, 100)
+        self.ema200 = moving_average_exp(prices, 200)
 
 def moving_average(x, n):
     padding = [0] * (n - 1)
     return np.concatenate((padding, np.convolve(x, np.ones(n)/n, mode='valid')))
+
+def moving_average_exp(data, window):
+
+    alpha = 2 /(window + 1.0)
+    alpha_rev = 1-alpha
+
+    scale = 1/alpha_rev
+    data = np.array(data)
+    n = data.shape[0]
+
+    r = np.arange(n)
+    scale_arr = scale**r
+    offset = data[0]*alpha_rev**(r+1)
+    pw0 = alpha*alpha_rev**(n-1)
+
+    mult = data*pw0*scale_arr
+    cumsums = mult.cumsum()
+    out = offset + cumsums*scale_arr[::-1]
+    return out
 
 def readData(filename, indices = [1,3,4,5,6]):
     data = []
@@ -205,9 +230,49 @@ def majorMovingAveragesStrategy(data, i, strategyParams):
     sma50 = data.sma50[i]
     sma100 = data.sma100[i]
     sma200 = data.sma200[i]
-    if data.closes[i] > sma20 and data.closes[i] > sma50 and data.closes[i] > sma100 and data.closes[i] > sma200:
+    ignores = [True, False, True, True]
+    if (data.closes[i] > sma20 or ignores[0]) and (data.closes[i] > sma50 or ignores[1]) and (data.closes[i] > sma100 or ignores[2]) and (data.closes[i] or ignores[3]) > sma200:
         return "BUY"
-    elif data.closes[i] < sma20 and data.closes[i] < sma50 and data.closes[i] < sma100 and data.closes[i] < sma200:
+    elif (data.closes[i] < sma20 or ignores[0]) and (data.closes[i] < sma50 or ignores[1]) and (data.closes[i] < sma100 or ignores[2]) and (data.closes[i] < sma200 or ignores[3]):
+        return "SELL"
+    else:
+        return "HOLD"
+
+def majorMovingAveragesStrategyWeights(data, i, strategyParams):
+    sma20 = data.sma20[i]
+    sma50 = data.sma50[i]
+    sma100 = data.sma100[i]
+    sma200 = data.sma200[i]
+    weights = [1, 1, 0.6, 1]
+    score = 0
+    if (data.closes[i] > sma20): #and (data.closes[i] > sma50 or ignores[1]) and (data.closes[i] > sma100 or ignores[2]) and (data.closes[i] or ignores[3]) > sma200:
+        score += weights[0]
+    if (data.closes[i] > sma50):
+        score += weights[1]
+    if (data.closes[i] > sma100):
+        score += weights[2]
+    if (data.closes[i] > sma200):
+        score += weights[3]
+    if (data.closes[i] < sma20):
+        score -= weights[0]
+    if (data.closes[i] < sma50):
+        score -= weights[1]
+    if (data.closes[i] < sma100):
+        score -= weights[2]
+    if (data.closes[i] < sma200):
+        score -= weights[3]
+
+    if score > 0.3 * np.sum(weights):
+        return "BUY"
+    if score < -0.3 * np.sum(weights):
+        return "SELL"
+    else:
+        return "HOLD"
+
+def majorMovingAveragesCrossStrategy(data, i, strategyParams):
+    if majorMovingAveragesStrategy(data, i) == "BUY" and majorMovingAveragesStrategy(data, i-1) != "BUY":
+        return "BUY"
+    elif majorMovingAveragesStrategy(data, i) == "SELL":
         return "SELL"
     else:
         return "HOLD"
@@ -248,7 +313,7 @@ class StrategyTester:
 
 
 # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
-data = readData("./data/hourly/eth.csv")
+data = readData("./data/hourly/btc.csv")
 prices = data.closes
 
 data.initTechnicals()
@@ -266,4 +331,4 @@ startDelay = daysToIntervals(200)
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
 rsiParams = [rsiParam1, rsiParam2, rsiParam3]
 
-result = StrategyTester.testStrategy(100, majorMovingAveragesStrategy, data, rsiParams, chunkSize, startDelay)
+result = StrategyTester.testStrategy(100, majorMovingAveragesStrategyWeights, data, rsiParams, chunkSize, startDelay)

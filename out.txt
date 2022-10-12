@@ -1,0 +1,408 @@
+Calculating technicals...
+1/100 (range 5735 - 12935):
+majorMovingAveragesStrategyWeights: Na koniec po 251 tranzakcjach masz: 1083376 dol z zainwestowanych 1000000 czyli 108%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 634023 dol z zainwestowanych 1000000 czyli 63%
+
+2/100 (range 5914 - 13114):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 1038182 dol z zainwestowanych 1000000 czyli 104%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 658137 dol z zainwestowanych 1000000 czyli 66%
+
+3/100 (range 8707 - 15907):
+majorMovingAveragesStrategyWeights: Na koniec po 273 tranzakcjach masz: 865238 dol z zainwestowanych 1000000 czyli 87%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 713200 dol z zainwestowanych 1000000 czyli 71%
+
+4/100 (range 5178 - 12378):
+majorMovingAveragesStrategyWeights: Na koniec po 234 tranzakcjach masz: 1415266 dol z zainwestowanych 1000000 czyli 142%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 972682 dol z zainwestowanych 1000000 czyli 97%
+
+5/100 (range 5235 - 12435):
+majorMovingAveragesStrategyWeights: Na koniec po 235 tranzakcjach masz: 1344411 dol z zainwestowanych 1000000 czyli 134%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 932326 dol z zainwestowanych 1000000 czyli 93%
+
+6/100 (range 5895 - 13095):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 1021054 dol z zainwestowanych 1000000 czyli 102%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 644746 dol z zainwestowanych 1000000 czyli 64%
+
+7/100 (range 6320 - 13520):
+majorMovingAveragesStrategyWeights: Na koniec po 243 tranzakcjach masz: 1148361 dol z zainwestowanych 1000000 czyli 115%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 818619 dol z zainwestowanych 1000000 czyli 82%
+
+8/100 (range 7700 - 14900):
+majorMovingAveragesStrategyWeights: Na koniec po 252 tranzakcjach masz: 1322543 dol z zainwestowanych 1000000 czyli 132%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1120614 dol z zainwestowanych 1000000 czyli 112%
+
+9/100 (range 7449 - 14649):
+majorMovingAveragesStrategyWeights: Na koniec po 247 tranzakcjach masz: 1453951 dol z zainwestowanych 1000000 czyli 145%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1387793 dol z zainwestowanych 1000000 czyli 139%
+
+10/100 (range 5965 - 13165):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1043449 dol z zainwestowanych 1000000 czyli 104%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 687118 dol z zainwestowanych 1000000 czyli 69%
+
+11/100 (range 6873 - 14073):
+majorMovingAveragesStrategyWeights: Na koniec po 245 tranzakcjach masz: 1124059 dol z zainwestowanych 1000000 czyli 112%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 796580 dol z zainwestowanych 1000000 czyli 80%
+
+12/100 (range 7361 - 14561):
+majorMovingAveragesStrategyWeights: Na koniec po 252 tranzakcjach masz: 1423526 dol z zainwestowanych 1000000 czyli 142%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1245265 dol z zainwestowanych 1000000 czyli 125%
+
+13/100 (range 7683 - 14883):
+majorMovingAveragesStrategyWeights: Na koniec po 251 tranzakcjach masz: 1334628 dol z zainwestowanych 1000000 czyli 133%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1098652 dol z zainwestowanych 1000000 czyli 110%
+
+14/100 (range 7881 - 15081):
+majorMovingAveragesStrategyWeights: Na koniec po 254 tranzakcjach masz: 1315028 dol z zainwestowanych 1000000 czyli 132%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1268453 dol z zainwestowanych 1000000 czyli 127%
+
+15/100 (range 6874 - 14074):
+majorMovingAveragesStrategyWeights: Na koniec po 245 tranzakcjach masz: 1124059 dol z zainwestowanych 1000000 czyli 112%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 792529 dol z zainwestowanych 1000000 czyli 79%
+
+16/100 (range 6346 - 13546):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1124429 dol z zainwestowanych 1000000 czyli 112%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 873225 dol z zainwestowanych 1000000 czyli 87%
+
+17/100 (range 6657 - 13857):
+majorMovingAveragesStrategyWeights: Na koniec po 253 tranzakcjach masz: 1079556 dol z zainwestowanych 1000000 czyli 108%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 755837 dol z zainwestowanych 1000000 czyli 76%
+
+18/100 (range 8139 - 15339):
+majorMovingAveragesStrategyWeights: Na koniec po 255 tranzakcjach masz: 1274067 dol z zainwestowanych 1000000 czyli 127%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1107100 dol z zainwestowanych 1000000 czyli 111%
+
+19/100 (range 5630 - 12830):
+majorMovingAveragesStrategyWeights: Na koniec po 252 tranzakcjach masz: 1126245 dol z zainwestowanych 1000000 czyli 113%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 742217 dol z zainwestowanych 1000000 czyli 74%
+
+20/100 (range 4883 - 12083):
+majorMovingAveragesStrategyWeights: Na koniec po 226 tranzakcjach masz: 1314587 dol z zainwestowanych 1000000 czyli 131%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 821854 dol z zainwestowanych 1000000 czyli 82%
+
+21/100 (range 8146 - 15346):
+majorMovingAveragesStrategyWeights: Na koniec po 258 tranzakcjach masz: 1269339 dol z zainwestowanych 1000000 czyli 127%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1102679 dol z zainwestowanych 1000000 czyli 110%
+
+22/100 (range 6729 - 13929):
+majorMovingAveragesStrategyWeights: Na koniec po 246 tranzakcjach masz: 1078882 dol z zainwestowanych 1000000 czyli 108%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 673095 dol z zainwestowanych 1000000 czyli 67%
+
+23/100 (range 8989 - 16189):
+majorMovingAveragesStrategyWeights: Na koniec po 269 tranzakcjach masz: 797525 dol z zainwestowanych 1000000 czyli 80%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 636187 dol z zainwestowanych 1000000 czyli 64%
+
+24/100 (range 8253 - 15453):
+majorMovingAveragesStrategyWeights: Na koniec po 254 tranzakcjach masz: 1291919 dol z zainwestowanych 1000000 czyli 129%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1020973 dol z zainwestowanych 1000000 czyli 102%
+
+25/100 (range 7708 - 14908):
+majorMovingAveragesStrategyWeights: Na koniec po 252 tranzakcjach masz: 1322543 dol z zainwestowanych 1000000 czyli 132%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1120861 dol z zainwestowanych 1000000 czyli 112%
+
+26/100 (range 6554 - 13754):
+majorMovingAveragesStrategyWeights: Na koniec po 245 tranzakcjach masz: 1061259 dol z zainwestowanych 1000000 czyli 106%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 694223 dol z zainwestowanych 1000000 czyli 69%
+
+27/100 (range 8976 - 16176):
+majorMovingAveragesStrategyWeights: Na koniec po 266 tranzakcjach masz: 815023 dol z zainwestowanych 1000000 czyli 82%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 664344 dol z zainwestowanych 1000000 czyli 66%
+
+28/100 (range 5892 - 13092):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 1028753 dol z zainwestowanych 1000000 czyli 103%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 650306 dol z zainwestowanych 1000000 czyli 65%
+
+29/100 (range 5776 - 12976):
+majorMovingAveragesStrategyWeights: Na koniec po 253 tranzakcjach masz: 1028548 dol z zainwestowanych 1000000 czyli 103%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 583457 dol z zainwestowanych 1000000 czyli 58%
+
+30/100 (range 6888 - 14088):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 1106172 dol z zainwestowanych 1000000 czyli 111%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 812212 dol z zainwestowanych 1000000 czyli 81%
+
+31/100 (range 8830 - 16030):
+majorMovingAveragesStrategyWeights: Na koniec po 273 tranzakcjach masz: 981039 dol z zainwestowanych 1000000 czyli 98%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 804977 dol z zainwestowanych 1000000 czyli 80%
+
+32/100 (range 9048 - 16248):
+majorMovingAveragesStrategyWeights: Na koniec po 277 tranzakcjach masz: 746113 dol z zainwestowanych 1000000 czyli 75%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 625232 dol z zainwestowanych 1000000 czyli 63%
+
+33/100 (range 5957 - 13157):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1032513 dol z zainwestowanych 1000000 czyli 103%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 663946 dol z zainwestowanych 1000000 czyli 66%
+
+34/100 (range 6579 - 13779):
+majorMovingAveragesStrategyWeights: Na koniec po 245 tranzakcjach masz: 1007968 dol z zainwestowanych 1000000 czyli 101%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 665500 dol z zainwestowanych 1000000 czyli 67%
+
+35/100 (range 6829 - 14029):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1190568 dol z zainwestowanych 1000000 czyli 119%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 842701 dol z zainwestowanych 1000000 czyli 84%
+
+36/100 (range 7468 - 14668):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 1468125 dol z zainwestowanych 1000000 czyli 147%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1367932 dol z zainwestowanych 1000000 czyli 137%
+
+37/100 (range 7325 - 14525):
+majorMovingAveragesStrategyWeights: Na koniec po 251 tranzakcjach masz: 1371252 dol z zainwestowanych 1000000 czyli 137%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1229235 dol z zainwestowanych 1000000 czyli 123%
+
+38/100 (range 8907 - 16107):
+majorMovingAveragesStrategyWeights: Na koniec po 268 tranzakcjach masz: 821499 dol z zainwestowanych 1000000 czyli 82%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 660345 dol z zainwestowanych 1000000 czyli 66%
+
+39/100 (range 7135 - 14335):
+majorMovingAveragesStrategyWeights: Na koniec po 250 tranzakcjach masz: 1118760 dol z zainwestowanych 1000000 czyli 112%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1050606 dol z zainwestowanych 1000000 czyli 105%
+
+40/100 (range 8403 - 15603):
+majorMovingAveragesStrategyWeights: Na koniec po 252 tranzakcjach masz: 1293381 dol z zainwestowanych 1000000 czyli 129%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 922439 dol z zainwestowanych 1000000 czyli 92%
+
+41/100 (range 4833 - 12033):
+majorMovingAveragesStrategyWeights: Na koniec po 233 tranzakcjach masz: 1450271 dol z zainwestowanych 1000000 czyli 145%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 926608 dol z zainwestowanych 1000000 czyli 93%
+
+42/100 (range 7509 - 14709):
+majorMovingAveragesStrategyWeights: Na koniec po 253 tranzakcjach masz: 1370297 dol z zainwestowanych 1000000 czyli 137%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1195138 dol z zainwestowanych 1000000 czyli 120%
+
+43/100 (range 8284 - 15484):
+majorMovingAveragesStrategyWeights: Na koniec po 250 tranzakcjach masz: 1310636 dol z zainwestowanych 1000000 czyli 131%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1020957 dol z zainwestowanych 1000000 czyli 102%
+
+44/100 (range 5834 - 13034):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 991523 dol z zainwestowanych 1000000 czyli 99%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 603382 dol z zainwestowanych 1000000 czyli 60%
+
+45/100 (range 7190 - 14390):
+majorMovingAveragesStrategyWeights: Na koniec po 256 tranzakcjach masz: 1259466 dol z zainwestowanych 1000000 czyli 126%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1216047 dol z zainwestowanych 1000000 czyli 122%
+
+46/100 (range 4873 - 12073):
+majorMovingAveragesStrategyWeights: Na koniec po 227 tranzakcjach masz: 1329946 dol z zainwestowanych 1000000 czyli 133%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 806409 dol z zainwestowanych 1000000 czyli 81%
+
+47/100 (range 5965 - 13165):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1043449 dol z zainwestowanych 1000000 czyli 104%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 687118 dol z zainwestowanych 1000000 czyli 69%
+
+48/100 (range 8236 - 15436):
+majorMovingAveragesStrategyWeights: Na koniec po 249 tranzakcjach masz: 1314216 dol z zainwestowanych 1000000 czyli 131%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1068022 dol z zainwestowanych 1000000 czyli 107%
+
+49/100 (range 8763 - 15963):
+majorMovingAveragesStrategyWeights: Na koniec po 275 tranzakcjach masz: 885018 dol z zainwestowanych 1000000 czyli 89%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 729403 dol z zainwestowanych 1000000 czyli 73%
+
+50/100 (range 6179 - 13379):
+majorMovingAveragesStrategyWeights: Na koniec po 246 tranzakcjach masz: 1132198 dol z zainwestowanych 1000000 czyli 113%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 739125 dol z zainwestowanych 1000000 czyli 74%
+
+51/100 (range 6838 - 14038):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1191279 dol z zainwestowanych 1000000 czyli 119%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 836753 dol z zainwestowanych 1000000 czyli 84%
+
+52/100 (range 6453 - 13653):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1061239 dol z zainwestowanych 1000000 czyli 106%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 673185 dol z zainwestowanych 1000000 czyli 67%
+
+53/100 (range 6884 - 14084):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 1106172 dol z zainwestowanych 1000000 czyli 111%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 798556 dol z zainwestowanych 1000000 czyli 80%
+
+54/100 (range 9002 - 16202):
+majorMovingAveragesStrategyWeights: Na koniec po 269 tranzakcjach masz: 818256 dol z zainwestowanych 1000000 czyli 82%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 679192 dol z zainwestowanych 1000000 czyli 68%
+
+55/100 (range 5851 - 13051):
+majorMovingAveragesStrategyWeights: Na koniec po 250 tranzakcjach masz: 1006741 dol z zainwestowanych 1000000 czyli 101%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 615455 dol z zainwestowanych 1000000 czyli 62%
+
+56/100 (range 7428 - 14628):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1473489 dol z zainwestowanych 1000000 czyli 147%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1285554 dol z zainwestowanych 1000000 czyli 129%
+
+57/100 (range 5263 - 12463):
+majorMovingAveragesStrategyWeights: Na koniec po 239 tranzakcjach masz: 1236013 dol z zainwestowanych 1000000 czyli 124%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 868578 dol z zainwestowanych 1000000 czyli 87%
+
+58/100 (range 5983 - 13183):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1028065 dol z zainwestowanych 1000000 czyli 103%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 674388 dol z zainwestowanych 1000000 czyli 67%
+
+59/100 (range 9212 - 16412):
+majorMovingAveragesStrategyWeights: Na koniec po 271 tranzakcjach masz: 751156 dol z zainwestowanych 1000000 czyli 75%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 420578 dol z zainwestowanych 1000000 czyli 42%
+
+60/100 (range 5002 - 12202):
+majorMovingAveragesStrategyWeights: Na koniec po 240 tranzakcjach masz: 1389327 dol z zainwestowanych 1000000 czyli 139%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1033846 dol z zainwestowanych 1000000 czyli 103%
+
+61/100 (range 5302 - 12502):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1177645 dol z zainwestowanych 1000000 czyli 118%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 828493 dol z zainwestowanych 1000000 czyli 83%
+
+62/100 (range 6691 - 13891):
+majorMovingAveragesStrategyWeights: Na koniec po 242 tranzakcjach masz: 1066472 dol z zainwestowanych 1000000 czyli 107%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 735097 dol z zainwestowanych 1000000 czyli 74%
+
+63/100 (range 8060 - 15260):
+majorMovingAveragesStrategyWeights: Na koniec po 254 tranzakcjach masz: 1283674 dol z zainwestowanych 1000000 czyli 128%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1114884 dol z zainwestowanych 1000000 czyli 111%
+
+64/100 (range 5082 - 12282):
+majorMovingAveragesStrategyWeights: Na koniec po 237 tranzakcjach masz: 1384122 dol z zainwestowanych 1000000 czyli 138%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1037262 dol z zainwestowanych 1000000 czyli 104%
+
+65/100 (range 5173 - 12373):
+majorMovingAveragesStrategyWeights: Na koniec po 237 tranzakcjach masz: 1411847 dol z zainwestowanych 1000000 czyli 141%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 987721 dol z zainwestowanych 1000000 czyli 99%
+
+66/100 (range 5258 - 12458):
+majorMovingAveragesStrategyWeights: Na koniec po 235 tranzakcjach masz: 1245730 dol z zainwestowanych 1000000 czyli 125%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 874742 dol z zainwestowanych 1000000 czyli 87%
+
+67/100 (range 7690 - 14890):
+majorMovingAveragesStrategyWeights: Na koniec po 252 tranzakcjach masz: 1322543 dol z zainwestowanych 1000000 czyli 132%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1093489 dol z zainwestowanych 1000000 czyli 109%
+
+68/100 (range 7310 - 14510):
+majorMovingAveragesStrategyWeights: Na koniec po 246 tranzakcjach masz: 1406238 dol z zainwestowanych 1000000 czyli 141%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1260598 dol z zainwestowanych 1000000 czyli 126%
+
+69/100 (range 5762 - 12962):
+majorMovingAveragesStrategyWeights: Na koniec po 249 tranzakcjach masz: 1052258 dol z zainwestowanych 1000000 czyli 105%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 610907 dol z zainwestowanych 1000000 czyli 61%
+
+70/100 (range 6793 - 13993):
+majorMovingAveragesStrategyWeights: Na koniec po 240 tranzakcjach masz: 1089880 dol z zainwestowanych 1000000 czyli 109%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 661740 dol z zainwestowanych 1000000 czyli 66%
+
+71/100 (range 5142 - 12342):
+majorMovingAveragesStrategyWeights: Na koniec po 231 tranzakcjach masz: 1364068 dol z zainwestowanych 1000000 czyli 136%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 952065 dol z zainwestowanych 1000000 czyli 95%
+
+72/100 (range 6246 - 13446):
+majorMovingAveragesStrategyWeights: Na koniec po 242 tranzakcjach masz: 1109995 dol z zainwestowanych 1000000 czyli 111%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 746378 dol z zainwestowanych 1000000 czyli 75%
+
+73/100 (range 8461 - 15661):
+majorMovingAveragesStrategyWeights: Na koniec po 250 tranzakcjach masz: 1264119 dol z zainwestowanych 1000000 czyli 126%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 988175 dol z zainwestowanych 1000000 czyli 99%
+
+74/100 (range 9118 - 16318):
+majorMovingAveragesStrategyWeights: Na koniec po 272 tranzakcjach masz: 778333 dol z zainwestowanych 1000000 czyli 78%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 589285 dol z zainwestowanych 1000000 czyli 59%
+
+75/100 (range 5693 - 12893):
+majorMovingAveragesStrategyWeights: Na koniec po 254 tranzakcjach masz: 1078052 dol z zainwestowanych 1000000 czyli 108%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 707501 dol z zainwestowanych 1000000 czyli 71%
+
+76/100 (range 6145 - 13345):
+majorMovingAveragesStrategyWeights: Na koniec po 246 tranzakcjach masz: 1083355 dol z zainwestowanych 1000000 czyli 108%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 694525 dol z zainwestowanych 1000000 czyli 69%
+
+77/100 (range 5682 - 12882):
+majorMovingAveragesStrategyWeights: Na koniec po 253 tranzakcjach masz: 1138357 dol z zainwestowanych 1000000 czyli 114%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 793774 dol z zainwestowanych 1000000 czyli 79%
+
+78/100 (range 5036 - 12236):
+majorMovingAveragesStrategyWeights: Na koniec po 240 tranzakcjach masz: 1466388 dol z zainwestowanych 1000000 czyli 147%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1114290 dol z zainwestowanych 1000000 czyli 111%
+
+79/100 (range 6213 - 13413):
+majorMovingAveragesStrategyWeights: Na koniec po 242 tranzakcjach masz: 1109995 dol z zainwestowanych 1000000 czyli 111%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 707820 dol z zainwestowanych 1000000 czyli 71%
+
+80/100 (range 8661 - 15861):
+majorMovingAveragesStrategyWeights: Na koniec po 264 tranzakcjach masz: 926449 dol z zainwestowanych 1000000 czyli 93%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 739251 dol z zainwestowanych 1000000 czyli 74%
+
+81/100 (range 7236 - 14436):
+majorMovingAveragesStrategyWeights: Na koniec po 256 tranzakcjach masz: 1281608 dol z zainwestowanych 1000000 czyli 128%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1253182 dol z zainwestowanych 1000000 czyli 125%
+
+82/100 (range 6007 - 13207):
+majorMovingAveragesStrategyWeights: Na koniec po 250 tranzakcjach masz: 1009790 dol z zainwestowanych 1000000 czyli 101%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 638294 dol z zainwestowanych 1000000 czyli 64%
+
+83/100 (range 6160 - 13360):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 1094087 dol z zainwestowanych 1000000 czyli 109%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 701405 dol z zainwestowanych 1000000 czyli 70%
+
+84/100 (range 6741 - 13941):
+majorMovingAveragesStrategyWeights: Na koniec po 249 tranzakcjach masz: 1074317 dol z zainwestowanych 1000000 czyli 107%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 675249 dol z zainwestowanych 1000000 czyli 68%
+
+85/100 (range 8041 - 15241):
+majorMovingAveragesStrategyWeights: Na koniec po 246 tranzakcjach masz: 1308993 dol z zainwestowanych 1000000 czyli 131%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1188283 dol z zainwestowanych 1000000 czyli 119%
+
+86/100 (range 5586 - 12786):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 1105944 dol z zainwestowanych 1000000 czyli 111%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 789026 dol z zainwestowanych 1000000 czyli 79%
+
+87/100 (range 9177 - 16377):
+majorMovingAveragesStrategyWeights: Na koniec po 273 tranzakcjach masz: 793622 dol z zainwestowanych 1000000 czyli 79%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 457389 dol z zainwestowanych 1000000 czyli 46%
+
+88/100 (range 6734 - 13934):
+majorMovingAveragesStrategyWeights: Na koniec po 246 tranzakcjach masz: 1078882 dol z zainwestowanych 1000000 czyli 108%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 678223 dol z zainwestowanych 1000000 czyli 68%
+
+89/100 (range 7610 - 14810):
+majorMovingAveragesStrategyWeights: Na koniec po 254 tranzakcjach masz: 1261998 dol z zainwestowanych 1000000 czyli 126%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1035618 dol z zainwestowanych 1000000 czyli 104%
+
+90/100 (range 7764 - 14964):
+majorMovingAveragesStrategyWeights: Na koniec po 259 tranzakcjach masz: 1290892 dol z zainwestowanych 1000000 czyli 129%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1229998 dol z zainwestowanych 1000000 czyli 123%
+
+91/100 (range 8889 - 16089):
+majorMovingAveragesStrategyWeights: Na koniec po 267 tranzakcjach masz: 839081 dol z zainwestowanych 1000000 czyli 84%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 690450 dol z zainwestowanych 1000000 czyli 69%
+
+92/100 (range 6288 - 13488):
+majorMovingAveragesStrategyWeights: Na koniec po 243 tranzakcjach masz: 1107421 dol z zainwestowanych 1000000 czyli 111%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 758528 dol z zainwestowanych 1000000 czyli 76%
+
+93/100 (range 7444 - 14644):
+majorMovingAveragesStrategyWeights: Na koniec po 247 tranzakcjach masz: 1453951 dol z zainwestowanych 1000000 czyli 145%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 1413710 dol z zainwestowanych 1000000 czyli 141%
+
+94/100 (range 4843 - 12043):
+majorMovingAveragesStrategyWeights: Na koniec po 230 tranzakcjach masz: 1349209 dol z zainwestowanych 1000000 czyli 135%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 858096 dol z zainwestowanych 1000000 czyli 86%
+
+95/100 (range 5601 - 12801):
+majorMovingAveragesStrategyWeights: Na koniec po 250 tranzakcjach masz: 1103470 dol z zainwestowanych 1000000 czyli 110%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 788350 dol z zainwestowanych 1000000 czyli 79%
+
+96/100 (range 6725 - 13925):
+majorMovingAveragesStrategyWeights: Na koniec po 244 tranzakcjach masz: 1047580 dol z zainwestowanych 1000000 czyli 105%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 672345 dol z zainwestowanych 1000000 czyli 67%
+
+97/100 (range 5888 - 13088):
+majorMovingAveragesStrategyWeights: Na koniec po 248 tranzakcjach masz: 1027141 dol z zainwestowanych 1000000 czyli 103%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 653855 dol z zainwestowanych 1000000 czyli 65%
+
+98/100 (range 4978 - 12178):
+majorMovingAveragesStrategyWeights: Na koniec po 240 tranzakcjach masz: 1408207 dol z zainwestowanych 1000000 czyli 141%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 951774 dol z zainwestowanych 1000000 czyli 95%
+
+99/100 (range 6460 - 13660):
+majorMovingAveragesStrategyWeights: Na koniec po 247 tranzakcjach masz: 1077312 dol z zainwestowanych 1000000 czyli 108%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 675549 dol z zainwestowanych 1000000 czyli 68%
+
+100/100 (range 8520 - 15720):
+majorMovingAveragesStrategyWeights: Na koniec po 262 tranzakcjach masz: 1169525 dol z zainwestowanych 1000000 czyli 117%
+holdStrategy: Na koniec po 1 tranzakcjach masz: 886150 dol z zainwestowanych 1000000 czyli 89%
+
+Average ratio of start money for chosen strategy: 115.6%
+Average ratio of start money for holding: 85.97%
+Best for chosen strategy: 147%
+Best for holding: 141%
+Worst for chosen strategy: 75%
+Worst for holding: 42%
+
