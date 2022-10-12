@@ -230,10 +230,9 @@ def majorMovingAveragesStrategy(data, i, strategyParams):
     sma50 = data.sma50[i]
     sma100 = data.sma100[i]
     sma200 = data.sma200[i]
-    ignores = [True, False, True, True]
-    if (data.closes[i] > sma20 or ignores[0]) and (data.closes[i] > sma50 or ignores[1]) and (data.closes[i] > sma100 or ignores[2]) and (data.closes[i] or ignores[3]) > sma200:
+    if (data.closes[i] > sma20) and (data.closes[i] > sma50) and (data.closes[i] > sma100) and data.closes[i] > sma200:
         return "BUY"
-    elif (data.closes[i] < sma20 or ignores[0]) and (data.closes[i] < sma50 or ignores[1]) and (data.closes[i] < sma100 or ignores[2]) and (data.closes[i] < sma200 or ignores[3]):
+    elif (data.closes[i] < sma20) and (data.closes[i] < sma50) and (data.closes[i] < sma100) and (data.closes[i] < sma200):
         return "SELL"
     else:
         return "HOLD"
@@ -243,9 +242,9 @@ def majorMovingAveragesStrategyWeights(data, i, strategyParams):
     sma50 = data.sma50[i]
     sma100 = data.sma100[i]
     sma200 = data.sma200[i]
-    weights = [1, 1, 0.6, 1]
+    weights = strategyParams
     score = 0
-    if (data.closes[i] > sma20): #and (data.closes[i] > sma50 or ignores[1]) and (data.closes[i] > sma100 or ignores[2]) and (data.closes[i] or ignores[3]) > sma200:
+    if (data.closes[i] > sma20):
         score += weights[0]
     if (data.closes[i] > sma50):
         score += weights[1]
@@ -288,7 +287,7 @@ class StrategyTester:
         simulation = Simulation(prices, idxStart, idxEnd - 1, 1000000, 0.00, False)
         ratio = simulation.simulate(strategy, data, strategyParams, 1)
 
-        ratioRef = simulation.simulate(holdStrategy, data, [], 1)
+        ratioRef = simulation.simulate(holdStrategy, data, strategyParams, 1)
         print("")
         return [ratio, ratioRef]
 
@@ -331,4 +330,5 @@ startDelay = daysToIntervals(200)
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
 rsiParams = [rsiParam1, rsiParam2, rsiParam3]
 
-result = StrategyTester.testStrategy(100, majorMovingAveragesStrategyWeights, data, rsiParams, chunkSize, startDelay)
+weights = [1, 1, 0.6, 1]
+result = StrategyTester.testStrategy(100, majorMovingAveragesStrategyWeights, data, weights, chunkSize, startDelay)
