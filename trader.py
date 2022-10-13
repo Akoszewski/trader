@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import math
+import pandas as pd
+import pandas_ta as pta
 
 # unix, date, symbol, open, high, low, close, VolumeBTC, VolumeUSDT, tradecount
 class DataPoints:
@@ -30,6 +32,8 @@ class DataPoints:
             self.ema50 = []
             self.ema100 = []
             self.ema200 = []
+            self.rsi = []
+            self.macd = []
 
     # def printDataPoint(self):
         # print(f"Date: {self.date} open: {self.open} h: {self.high} l: {self.low} close: {self.close}")
@@ -37,37 +41,18 @@ class DataPoints:
     def initTechnicals(self):
         print(f"Calculating technicals...")
         prices = self.closes
-        self.sma20 = moving_average(prices, 20)
-        self.sma50 = moving_average(prices, 50)
-        self.sma100 = moving_average(prices, 100)
-        self.sma200 = moving_average(prices, 200)
-        self.ema20 = moving_average_exp(prices, 20)
-        self.ema50 = moving_average_exp(prices, 50)
-        self.ema100 = moving_average_exp(prices, 100)
-        self.ema200 = moving_average_exp(prices, 200)
+        df = pd.DataFrame(prices, columns =['closes'])
 
-def moving_average(x, n):
-    padding = [0] * (n - 1)
-    return np.concatenate((padding, np.convolve(x, np.ones(n)/n, mode='valid')))
-
-def moving_average_exp(data, window):
-
-    alpha = 2 /(window + 1.0)
-    alpha_rev = 1-alpha
-
-    scale = 1/alpha_rev
-    data = np.array(data)
-    n = data.shape[0]
-
-    r = np.arange(n)
-    scale_arr = scale**r
-    offset = data[0]*alpha_rev**(r+1)
-    pw0 = alpha*alpha_rev**(n-1)
-
-    mult = data*pw0*scale_arr
-    cumsums = mult.cumsum()
-    out = offset + cumsums*scale_arr[::-1]
-    return out
+        self.sma20 = pta.sma(close = df['closes'], length = 20).to_numpy()
+        self.sma50 = pta.sma(close = df['closes'], length = 50).to_numpy()
+        self.sma100 = pta.sma(close = df['closes'], length = 100).to_numpy()
+        self.sma200 = pta.sma(close = df['closes'], length = 200).to_numpy()
+        self.ema20 = pta.ema(close = df['closes'], length = 20).to_numpy()
+        self.ema50 = pta.ema(close = df['closes'], length = 50).to_numpy()
+        self.ema100 = pta.ema(close = df['closes'], length = 100).to_numpy()
+        self.ema200 = pta.ema(close = df['closes'], length = 200).to_numpy()
+        self.rsi = pta.rsi(close = df['closes'], length = 14).to_numpy()
+        self.macd = pta.macd(close = df['closes'], length = 14).to_numpy()
 
 def readData(filename, indices = [1,3,4,5,6]):
     data = []
@@ -115,8 +100,8 @@ class Simulation:
         percentage = round(ratio * 100)
         if len(msg) == 0:
             msg = "Result"
-        print(f"{msg}: Na koniec po {trades} tranzakcjach masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
-                f" czyli {percentage}%")
+        # print(f"{msg}: Na koniec po {trades} tranzakcjach masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
+                # f" czyli {percentage}%")
 
     def simulate(self, strategy, data, strategyParams, fractionOfTotalToTrade=1, step=1):
         account = Account(self.startMoney, self.provision)
@@ -237,11 +222,25 @@ def majorMovingAveragesStrategy(data, i, strategyParams):
     else:
         return "HOLD"
 
+def macdStrategy(data, i, strategyParams):
+    macdLine = data.macd[i][0]
+    macdDiff = data.macd[i][1]
+    macdSignal = data.macd[i][2]
+    macdPrevLine = data.macd[i-1][0]
+    macdPrevSignal = data.macd[i-1][2]
+    if macdLine > 0 and macdPrevLine < 0:
+        return "BUY"
+    elif macdLine < 0 and macdPrevLine > 0:
+        return "SELL"
+    else:
+        return "HOLD"
+
+
 def majorMovingAveragesStrategyWeights(data, i, strategyParams):
-    sma20 = data.sma20[i]
-    sma50 = data.sma50[i]
-    sma100 = data.sma100[i]
-    sma200 = data.sma200[i]
+    sma20 = data.ema20[i]
+    sma50 = data.ema50[i]
+    sma100 = data.ema100[i]
+    sma200 = data.ema200[i]
     weights = strategyParams
     score = 0
     if (data.closes[i] > sma20):
@@ -276,19 +275,34 @@ def majorMovingAveragesCrossStrategy(data, i, strategyParams):
     else:
         return "HOLD"
 
+def macdAndMovingStrategy(data, i, strategyParams):
+    if majorMovingAveragesStrategyWeights(data, i, strategyParams) == "BUY" and macdStrategy(data, i, strategyParams) == "BUY":
+        return "BUY"
+    elif majorMovingAveragesStrategyWeights(data, i, strategyParams) == "SELL" or macdStrategy(data, i, strategyParams) == "SELL":
+        return "SELL"
+    else:
+        return "HOLD"
+
+def macdAndMovingStrategy2(data, i, strategyParams):
+    if majorMovingAveragesStrategyWeights(data, i, strategyParams) == "BUY" or data.macd[i][0] > 0:
+        return "BUY"
+    elif majorMovingAveragesStrategyWeights(data, i, strategyParams) == "SELL" and data.macd[i][0] < 0:
+        return "SELL"
+    else:
+        return "HOLD"
 # majorMovingAveragesStrategyAI(data, i, strategyParams):
 #     svm()
 
 class StrategyTester:
     def doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay):
         [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), startDelay, True)
-        print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
+        # print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
         simulation = Simulation(prices, idxStart, idxEnd - 1, 1000000, 0.00, False)
         ratio = simulation.simulate(strategy, data, strategyParams, 1)
 
         ratioRef = simulation.simulate(holdStrategy, data, strategyParams, 1)
-        print("")
+        # print("")
         return [ratio, ratioRef]
 
     def testStrategy(iterations, strategy, data, strategyParams, chunkSize, startDelay):
@@ -300,6 +314,7 @@ class StrategyTester:
             ratiosRef.append(ratioRef)
 
         averageRatio = sum(ratios)/len(ratios)
+        averageRatioRef = sum(ratiosRef)/len(ratiosRef)
         print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100, 2)}%")
         print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100, 2)}%")
         print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
@@ -307,12 +322,12 @@ class StrategyTester:
         print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
         print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
         print("")
-        return averageRatio
+        return averageRatio / averageRatioRef
 
 
 
 # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
-data = readData("./data/hourly/btc.csv")
+data = readData("./data/hourly/eth.csv")
 prices = data.closes
 
 data.initTechnicals()
@@ -329,6 +344,28 @@ startDelay = daysToIntervals(200)
 # startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
 combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
 rsiParams = [rsiParam1, rsiParam2, rsiParam3]
-
-weights = [1, 1, 0.6, 1]
+weights = [0.45134, 0.6169, 0.39278, 0.788256]
 result = StrategyTester.testStrategy(100, majorMovingAveragesStrategyWeights, data, weights, chunkSize, startDelay)
+# result = StrategyTester.testStrategy(100, macdAndMovingStrategy2, data, weights, chunkSize, startDelay)
+
+
+# tuning wag
+# solutions = []
+# for s in range(100):
+#     solutions.append((random.randint(0, 5)/5,
+#                       random.randint(0, 5)/5,
+#                       random.randint(0, 5)/5,
+#                       random.randint(0, 5)/5))
+
+# rankedSolutions = []
+# i = 0
+# for s in solutions:
+#     result = StrategyTester.testStrategy(100, majorMovingAveragesStrategyWeights, data, weights, chunkSize, startDelay)
+#     rankedSolutions.append( (result, s) )
+#     rankedSolutions.sort()
+#     rankedSolutions.reverse()
+#     i += 1
+#     print(f"(Test {i}) weights: {s} result: {result}")
+#     print("")
+
+# print(rankedSolutions[0])
