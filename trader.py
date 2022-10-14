@@ -7,6 +7,8 @@ import math
 import pandas as pd
 import pandas_ta as pta
 
+# Main function is at the bottom of the file :)
+
 # unix, date, symbol, open, high, low, close, VolumeBTC, VolumeUSDT, tradecount
 class DataPoints:
     def __init__(self, rawData, indices):
