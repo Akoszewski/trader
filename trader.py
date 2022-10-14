@@ -173,27 +173,27 @@ def macdStrategy(data, i, strategyParams):
 
 
 def weightedMajorEmasStrategy(data, i, strategyParams):
-    sma20 = data.ema20[i]
-    sma50 = data.ema50[i]
-    sma100 = data.ema100[i]
-    sma200 = data.ema200[i]
+    ema20 = data.ema20[i]
+    ema50 = data.ema50[i]
+    ema100 = data.ema100[i]
+    ema200 = data.ema200[i]
     weights = strategyParams[2:]
     score = 0
-    if (data.closes[i] > sma20):
+    if (data.closes[i] > ema20):
         score += weights[0]
-    if (data.closes[i] > sma50):
+    if (data.closes[i] > ema50):
         score += weights[1]
-    if (data.closes[i] > sma100):
+    if (data.closes[i] > ema100):
         score += weights[2]
-    if (data.closes[i] > sma200):
+    if (data.closes[i] > ema200):
         score += weights[3]
-    if (data.closes[i] < sma20):
+    if (data.closes[i] < ema20):
         score -= weights[0]
-    if (data.closes[i] < sma50):
+    if (data.closes[i] < ema50):
         score -= weights[1]
-    if (data.closes[i] < sma100):
+    if (data.closes[i] < ema100):
         score -= weights[2]
-    if (data.closes[i] < sma200):
+    if (data.closes[i] < ema200):
         score -= weights[3]
 
     if score > strategyParams[0] * np.sum(weights):
