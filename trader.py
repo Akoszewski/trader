@@ -100,8 +100,8 @@ class Simulation:
         percentage = round(ratio * 100)
         if len(msg) == 0:
             msg = "Result"
-        # print(f"{msg}: Na koniec po {trades} tranzakcjach masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
-                # f" czyli {percentage}%")
+        print(f"{msg}: Na koniec po {trades} tranzakcjach masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
+                f" czyli {percentage}%")
 
     def simulate(self, strategy, data, strategyParams, fractionOfTotalToTrade=1, step=1):
         account = Account(self.startMoney, self.provision)
@@ -120,54 +120,10 @@ class Simulation:
             self.displayResultMsg(strategy.__name__, lastValue, ratio, self.trades)
         return ratio
 
+
+
 def holdStrategy(data, pricesSoFar, params):
     return "BUY"
-
-# Codzienie kupuje za x dolcow
-def randomBuySellStrategy(pricesSoFar, params):
-    if random.randint(0, 1) == 1:
-        return "BUY"
-    else:
-        return "SELL"
-    
-def average(data):
-    return sum(data) / len(data) 
-
-def movingAveragesStrategy(pricesSoFar, params):
-    avgShorter = average(pricesSoFar[len(pricesSoFar)-params[1]:])
-    avgLonger = average(pricesSoFar[len(pricesSoFar)-params[0]:])
-    if (avgShorter > avgLonger):
-        return "BUY"
-    else:
-        return "SELL"
-
-def rsiStrategy(pricesSoFar, params):
-    rsi = calculateRSI(pricesSoFar, params[0])
-    if (rsi > params[2]):
-        return "SELL"
-    elif (rsi < params[1]):
-        return "BUY"
-    else:
-        return "HOLD"
-
-def RS(data, n):
-    relevantData = data[len(data) - n:]
-    diffsInc = []
-    diffsDec = []
-    for i in range(1, len(relevantData)):
-        diff = relevantData[i] - relevantData[i-1]
-        if diff >= 0:
-            diffsInc.append(diff)
-        elif diff <= 0:
-            diffsDec.append(-diff)
-    if len(diffsDec) and len(diffsInc) > 0:
-        return average(diffsInc)/average(diffsDec)
-    else:
-        return 1
-
-def calculateRSI(data, n):
-    return 100 - (100/(1 + RS(data, n)))
-
 
 def getNumberedDataChunk(tradingDataLen, delay, num, maxnum):
     chunkLen = math.floor(tradingDataLen / maxnum)
@@ -187,28 +143,6 @@ def getRandomDataChunk(minChunkLength, dataLength, delay, isChunkLengthFixed = F
 
 def daysToIntervals(days, intervalsPerDay = 24):
     return math.floor(days * intervalsPerDay)
-
-def combinedStrategy(pricesSoFar, params):
-    smaDecision = movingAveragesStrategy(pricesSoFar, params)
-    rsiDecision = rsiStrategy(pricesSoFar, params[2:])
-    if smaDecision == "BUY" and rsiDecision == "BUY":
-        return "BUY"
-    elif smaDecision == "SELL" and rsiDecision == "SELL":
-        return "SELL"
-    else:
-        return "HOLD"
-    
-# def majorMovingAveragesStrategy(pricesSoFar, params):
-#     sma20 = movingAveragesStrategy(pricesSoFar, [20, 1])
-#     sma50 = movingAveragesStrategy(pricesSoFar, [50, 1])
-#     sma100 = movingAveragesStrategy(pricesSoFar, [100, 1])
-#     sma200 = movingAveragesStrategy(pricesSoFar, [200, 1])
-#     if sma20 == "BUY" and sma50 == "BUY" and sma100 == "BUY" and sma200 == "BUY":
-#         return "BUY"
-#     elif sma20 == "SELL" and sma50 == "SELL" and sma100 == "SELL" and sma200 == "SELL":
-#         return "SELL"
-#     else:
-#         return "HOLD"
 
 def majorMovingAveragesStrategy(data, i, strategyParams):
     sma20 = data.sma20[i]
@@ -295,10 +229,10 @@ def macdAndMovingStrategy2(data, i, strategyParams):
 
 class StrategyTester:
     def doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay):
-        [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(prices), startDelay, True)
+        [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(data.closes), startDelay, True)
         # print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
-        simulation = Simulation(prices, idxStart, idxEnd - 1, 1000000, 0.00, False)
+        simulation = Simulation(data.closes, idxStart, idxEnd - 1, 10000, 0.001, True)
         ratio = simulation.simulate(strategy, data, strategyParams, 1)
 
         ratioRef = simulation.simulate(holdStrategy, data, strategyParams, 1)
@@ -326,46 +260,57 @@ class StrategyTester:
 
 
 
-# data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
-data = readData("./data/hourly/eth.csv")
-prices = data.closes
-
-data.initTechnicals()
-
-# plt.plot(prices)
-# plt.show()
-
-chunkSize = daysToIntervals(300)
-
-smaParam1 = 10
-smaParam2 = 1
-[rsiParam1, rsiParam2, rsiParam3] = [14, 30, 70]
-startDelay = daysToIntervals(200)
-# startDelay = max([smaParam1, smaParam2, rsiParam1]) # delay must be at least the length of the data the decision is based on
-combinedStrategyParams = [smaParam1, smaParam2, rsiParam1, rsiParam2, rsiParam3]
-rsiParams = [rsiParam1, rsiParam2, rsiParam3]
-weights = [0.45134, 0.6169, 0.39278, 0.788256]
-result = StrategyTester.testStrategy(100, majorMovingAveragesStrategyWeights, data, weights, chunkSize, startDelay)
-# result = StrategyTester.testStrategy(100, macdAndMovingStrategy2, data, weights, chunkSize, startDelay)
+def demonstrate(data, weights):
+    chunkSize = daysToIntervals(30)
 
 
-# tuning wag
-# solutions = []
-# for s in range(100):
-#     solutions.append((random.randint(0, 5)/5,
-#                       random.randint(0, 5)/5,
-#                       random.randint(0, 5)/5,
-#                       random.randint(0, 5)/5))
+    startDelay = daysToIntervals(200)
 
-# rankedSolutions = []
-# i = 0
-# for s in solutions:
-#     result = StrategyTester.testStrategy(100, majorMovingAveragesStrategyWeights, data, weights, chunkSize, startDelay)
-#     rankedSolutions.append( (result, s) )
-#     rankedSolutions.sort()
-#     rankedSolutions.reverse()
-#     i += 1
-#     print(f"(Test {i}) weights: {s} result: {result}")
-#     print("")
+    print("Demonstrating result for chosen paramters...")
 
-# print(rankedSolutions[0])
+    result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, weights, chunkSize, startDelay)
+    # result = StrategyTester.testStrategy(100, macdAndMovingStrategy2, data, weights, chunkSize, startDelay)
+
+def train(data):
+    chunkSize = daysToIntervals(30)
+
+    startDelay = daysToIntervals(200)
+
+    print("Tuning paramters...")
+
+    solutions = []
+    for s in range(100):
+        solutions.append((random.randint(0, 5)/5,
+                        random.randint(0, 5)/5,
+                        random.randint(0, 5)/5,
+                        random.randint(0, 5)/5))
+
+    rankedSolutions = []
+    i = 0
+    for s in solutions:
+        result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, s, chunkSize, startDelay)
+        rankedSolutions.append( (result, s) )
+        rankedSolutions.sort()
+        rankedSolutions.reverse()
+        i += 1
+        print(f"(Test {i}) weights: {s} result: {result}")
+        print("")
+
+    bestParams = rankedSolutions[0]
+
+    print(f"Best parameters are: {bestParams}")
+    return bestParams
+
+def main():
+    # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
+    data = readData("./data/hourly/eth.csv")
+
+    data.initTechnicals()
+
+    # demonstrate or train
+
+    # train(data)
+    demonstrate(data, [1.0, 0.4, 1.0, 0.6])
+
+
+main()
