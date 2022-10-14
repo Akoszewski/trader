@@ -309,15 +309,16 @@ def train(data):
 def main():
     # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
     data = readData("./data/hourly/eth.csv")
-
     data.initTechnicals()
 
-    # demonstrate or train
+    training = False
 
-    # train(data)
-    params = [0.3, -0.3, 1.0, 0.4, 1.0, 0.6]
-    params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
-    paramsSafest = [0.3, -0.3, 0.45134, 0.6169, 0.39278, 0.788256]
-    demonstrate(data, paramsSafest)
+    if (training):
+        train(data)
+    else:
+        params = [0.3, -0.3, 1.0, 0.4, 1.0, 0.6]
+        params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
+        paramsSafest = [0.3, -0.3, 0.45134, 0.6169, 0.39278, 0.788256]
+        demonstrate(data, paramsSafest)
 
 main()
