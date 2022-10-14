@@ -175,7 +175,7 @@ def majorMovingAveragesStrategyWeights(data, i, strategyParams):
     sma50 = data.ema50[i]
     sma100 = data.ema100[i]
     sma200 = data.ema200[i]
-    weights = strategyParams
+    weights = strategyParams[2:]
     score = 0
     if (data.closes[i] > sma20):
         score += weights[0]
@@ -194,9 +194,9 @@ def majorMovingAveragesStrategyWeights(data, i, strategyParams):
     if (data.closes[i] < sma200):
         score -= weights[3]
 
-    if score > 0.3 * np.sum(weights):
+    if score > strategyParams[0] * np.sum(weights):
         return "BUY"
-    if score < -0.3 * np.sum(weights):
+    if score < strategyParams[1] * np.sum(weights):
         return "SELL"
     else:
         return "HOLD"
@@ -260,19 +260,18 @@ class StrategyTester:
 
 
 
-def demonstrate(data, weights):
-    chunkSize = daysToIntervals(30)
-
+def demonstrate(data, params):
+    chunkSize = daysToIntervals(300)
 
     startDelay = daysToIntervals(200)
 
     print("Demonstrating result for chosen paramters...")
 
-    result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, weights, chunkSize, startDelay)
+    result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, params, chunkSize, startDelay)
     # result = StrategyTester.testStrategy(100, macdAndMovingStrategy2, data, weights, chunkSize, startDelay)
 
 def train(data):
-    chunkSize = daysToIntervals(30)
+    chunkSize = daysToIntervals(300)
 
     startDelay = daysToIntervals(200)
 
@@ -280,7 +279,10 @@ def train(data):
 
     solutions = []
     for s in range(100):
-        solutions.append((random.randint(0, 5)/5,
+        solutions.append((
+                        0.3,
+                       -0.3,
+                        random.randint(0, 5)/5,
                         random.randint(0, 5)/5,
                         random.randint(0, 5)/5,
                         random.randint(0, 5)/5))
@@ -293,7 +295,7 @@ def train(data):
         rankedSolutions.sort()
         rankedSolutions.reverse()
         i += 1
-        print(f"(Test {i}) weights: {s} result: {result}")
+        print(f"(Test {i}) parameters: {s} result: {result}")
         print("")
 
     bestParams = rankedSolutions[0]
@@ -310,7 +312,8 @@ def main():
     # demonstrate or train
 
     # train(data)
-    demonstrate(data, [1.0, 0.4, 1.0, 0.6])
-
+    params = [0.3, -0.3, 1.0, 0.4, 1.0, 0.6]
+    # params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
+    demonstrate(data, params)
 
 main()
