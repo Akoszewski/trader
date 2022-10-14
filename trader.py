@@ -170,7 +170,7 @@ def macdStrategy(data, i, strategyParams):
         return "HOLD"
 
 
-def majorMovingAveragesStrategyWeights(data, i, strategyParams):
+def weightedMajorEmasStrategy(data, i, strategyParams):
     sma20 = data.ema20[i]
     sma50 = data.ema50[i]
     sma100 = data.ema100[i]
@@ -210,17 +210,17 @@ def majorMovingAveragesCrossStrategy(data, i, strategyParams):
         return "HOLD"
 
 def macdAndMovingStrategy(data, i, strategyParams):
-    if majorMovingAveragesStrategyWeights(data, i, strategyParams) == "BUY" and macdStrategy(data, i, strategyParams) == "BUY":
+    if weightedMajorEmasStrategy(data, i, strategyParams) == "BUY" and macdStrategy(data, i, strategyParams) == "BUY":
         return "BUY"
-    elif majorMovingAveragesStrategyWeights(data, i, strategyParams) == "SELL" or macdStrategy(data, i, strategyParams) == "SELL":
+    elif weightedMajorEmasStrategy(data, i, strategyParams) == "SELL" or macdStrategy(data, i, strategyParams) == "SELL":
         return "SELL"
     else:
         return "HOLD"
 
 def macdAndMovingStrategy2(data, i, strategyParams):
-    if majorMovingAveragesStrategyWeights(data, i, strategyParams) == "BUY" or data.macd[i][0] > 0:
+    if weightedMajorEmasStrategy(data, i, strategyParams) == "BUY" or data.macd[i][0] > 0:
         return "BUY"
-    elif majorMovingAveragesStrategyWeights(data, i, strategyParams) == "SELL" and data.macd[i][0] < 0:
+    elif weightedMajorEmasStrategy(data, i, strategyParams) == "SELL" and data.macd[i][0] < 0:
         return "SELL"
     else:
         return "HOLD"
@@ -270,7 +270,7 @@ def demonstrate(data, params):
 
     print("Demonstrating result for chosen parameters...")
 
-    result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, params, chunkSize, startDelay, True)
+    result = StrategyTester.testStrategy(20, weightedMajorEmasStrategy, data, params, chunkSize, startDelay, True)
     # result = StrategyTester.testStrategy(100, macdAndMovingStrategy2, data, weights, chunkSize, startDelay)
 
 def train(data):
@@ -293,7 +293,7 @@ def train(data):
     rankedSolutions = []
     i = 0
     for s in solutions:
-        result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, s, chunkSize, startDelay, True)
+        result = StrategyTester.testStrategy(20, weightedMajorEmasStrategy, data, s, chunkSize, startDelay, True)
         rankedSolutions.append( (result, s) )
         rankedSolutions.sort()
         rankedSolutions.reverse()
