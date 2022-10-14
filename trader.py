@@ -228,27 +228,30 @@ def macdAndMovingStrategy2(data, i, strategyParams):
 #     svm()
 
 class StrategyTester:
-    def doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay):
+    def doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent):
         [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(data.closes), startDelay, True)
         # print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
-        simulation = Simulation(data.closes, idxStart, idxEnd - 1, 10000, 0.001, True)
+        simulation = Simulation(data.closes, idxStart, idxEnd - 1, 10000, 0.001, isSilent)
         ratio = simulation.simulate(strategy, data, strategyParams, 1)
 
         ratioRef = simulation.simulate(holdStrategy, data, strategyParams, 1)
         # print("")
         return [ratio, ratioRef]
 
-    def testStrategy(iterations, strategy, data, strategyParams, chunkSize, startDelay):
+    def testStrategy(iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent):
         ratios = []
         ratiosRef = []
         for i in range(iterations):
-            [ratio, ratioRef] = StrategyTester.doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay)
+            [ratio, ratioRef] = StrategyTester.doSimulation(
+                    i, iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent
+            )
             ratios.append(ratio)
             ratiosRef.append(ratioRef)
 
         averageRatio = sum(ratios)/len(ratios)
         averageRatioRef = sum(ratiosRef)/len(ratiosRef)
+        print("")
         print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100, 2)}%")
         print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100, 2)}%")
         print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
@@ -265,9 +268,9 @@ def demonstrate(data, params):
 
     startDelay = daysToIntervals(200)
 
-    print("Demonstrating result for chosen paramters...")
+    print("Demonstrating result for chosen parameters...")
 
-    result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, params, chunkSize, startDelay)
+    result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, params, chunkSize, startDelay, True)
     # result = StrategyTester.testStrategy(100, macdAndMovingStrategy2, data, weights, chunkSize, startDelay)
 
 def train(data):
@@ -275,7 +278,7 @@ def train(data):
 
     startDelay = daysToIntervals(200)
 
-    print("Tuning paramters...")
+    print("Tuning parameters...")
 
     solutions = []
     for s in range(100):
@@ -290,7 +293,7 @@ def train(data):
     rankedSolutions = []
     i = 0
     for s in solutions:
-        result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, s, chunkSize, startDelay)
+        result = StrategyTester.testStrategy(20, majorMovingAveragesStrategyWeights, data, s, chunkSize, startDelay, True)
         rankedSolutions.append( (result, s) )
         rankedSolutions.sort()
         rankedSolutions.reverse()
@@ -313,7 +316,8 @@ def main():
 
     # train(data)
     params = [0.3, -0.3, 1.0, 0.4, 1.0, 0.6]
-    # params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
-    demonstrate(data, params)
+    params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
+    paramsSafest = [0.3, -0.3, 0.45134, 0.6169, 0.39278, 0.788256]
+    demonstrate(data, paramsSafest)
 
 main()
