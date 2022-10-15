@@ -6,6 +6,7 @@ import random
 import math
 import pandas as pd
 import pandas_ta as pta
+import itertools
 
 # Main function is at the bottom of the file :)
 
@@ -226,8 +227,26 @@ def macdAndMovingStrategy2(data, i, strategyParams):
         return "SELL"
     else:
         return "HOLD"
+
 # majorMovingAveragesStrategyAI(data, i, strategyParams):
 #     svm()
+
+def genRandomEmaOrderStrategyParams():
+    possibleRanks = [1, 2, 3, 4, 5]
+    rankPermutations = itertools.permutations(possibleRanks)
+    params = []
+    for permutation in rankPermutations:
+        params.append((permutation, random.choice(["BUY", "SELL", "HOLD"])))
+    return params
+
+def emaOrderStrategy(data, i, strategyParams):
+    priceAvgs = [(data.closes[i], 1), (data.ema20[i], 2), (data.ema50[i], 3), (data.ema100[i], 4), (data.ema200[i], 5)]
+    priceAvgs.sort(reverse = True)
+    ranks = []
+    for priceAvg in priceAvgs:
+        ranks.append(priceAvg[1])
+    print(ranks)
+
 
 class StrategyTester:
     def doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent):
@@ -272,7 +291,7 @@ def demonstrate(data, params):
 
     print("Demonstrating result for chosen parameters...")
 
-    result = StrategyTester.testStrategy(20, weightedMajorEmasStrategy, data, params, chunkSize, startDelay, True)
+    result = StrategyTester.testStrategy(20, emaOrderStrategy, data, params, chunkSize, startDelay, True)
     # result = StrategyTester.testStrategy(100, macdAndMovingStrategy2, data, weights, chunkSize, startDelay)
 
 def train(data):
@@ -295,7 +314,7 @@ def train(data):
     rankedSolutions = []
     i = 0
     for s in solutions:
-        result = StrategyTester.testStrategy(20, weightedMajorEmasStrategy, data, s, chunkSize, startDelay, True)
+        result = StrategyTester.testStrategy(20, emaOrderStrategy, data, s, chunkSize, startDelay, True)
         rankedSolutions.append( (result, s) )
         rankedSolutions.sort()
         rankedSolutions.reverse()
