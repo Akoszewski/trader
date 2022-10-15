@@ -234,9 +234,9 @@ def macdAndMovingStrategy2(data, i, strategyParams):
 def genRandomEmaOrderStrategyParams():
     possibleRanks = [1, 2, 3, 4, 5]
     rankPermutations = itertools.permutations(possibleRanks)
-    params = []
+    params = dict()
     for permutation in rankPermutations:
-        params.append((permutation, random.choice(["BUY", "SELL", "HOLD"])))
+        params[permutation] = random.choice(["BUY", "SELL", "HOLD"])
     return params
 
 def emaOrderStrategy(data, i, strategyParams):
@@ -245,7 +245,7 @@ def emaOrderStrategy(data, i, strategyParams):
     ranks = []
     for priceAvg in priceAvgs:
         ranks.append(priceAvg[1])
-    print(ranks)
+    return strategyParams[tuple(ranks)]
 
 
 class StrategyTester:
@@ -284,19 +284,14 @@ class StrategyTester:
 
 
 
-def demonstrate(data, params):
+def demonstrate(data, strategy, params):
     chunkSize = daysToIntervals(300)
-
     startDelay = daysToIntervals(200)
-
     print("Demonstrating result for chosen parameters...")
+    result = StrategyTester.testStrategy(20, strategy, data, params, chunkSize, startDelay, True)
 
-    result = StrategyTester.testStrategy(20, emaOrderStrategy, data, params, chunkSize, startDelay, True)
-    # result = StrategyTester.testStrategy(100, macdAndMovingStrategy2, data, weights, chunkSize, startDelay)
-
-def train(data):
+def train(data, strategy):
     chunkSize = daysToIntervals(300)
-
     startDelay = daysToIntervals(200)
 
     print("Tuning parameters...")
@@ -314,7 +309,7 @@ def train(data):
     rankedSolutions = []
     i = 0
     for s in solutions:
-        result = StrategyTester.testStrategy(20, emaOrderStrategy, data, s, chunkSize, startDelay, True)
+        result = StrategyTester.testStrategy(20, strategy, data, s, chunkSize, startDelay, True)
         rankedSolutions.append( (result, s) )
         rankedSolutions.sort()
         rankedSolutions.reverse()
@@ -335,11 +330,13 @@ def main():
     training = False
 
     if (training):
-        train(data)
+        # train(data, weightedMajorEmasStrategy)
+        train(data, emaOrderStrategy)
     else:
         params = [0.3, -0.3, 1.0, 0.4, 1.0, 0.6]
         params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
         paramsSafest = [0.3, -0.3, 0.45134, 0.6169, 0.39278, 0.788256]
-        demonstrate(data, paramsSafest)
+        paramsEmaOrder = genRandomEmaOrderStrategyParams()
+        demonstrate(data, emaOrderStrategy, paramsEmaOrder)
 
 main()
