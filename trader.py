@@ -99,11 +99,11 @@ class Simulation:
         self.silent = silent
         self.trades = 0
 
-    def displayResultMsg(self, msg, lastValue, ratio, trades):
+    def displayResultMsg(self, msg, start, end, lastValue, ratio, trades):
         percentage = round(ratio * 100)
         if len(msg) == 0:
             msg = "Result"
-        print(f"{msg}: Na koniec po {trades} tranzakcjach masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
+        print(f"{msg} ({start} - {end}): Na koniec po {trades} tranzakcjach masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
                 f" czyli {percentage}%")
 
     def simulate(self, strategy, data, strategyParams, fractionOfTotalToTrade=1, step=1):
@@ -120,7 +120,7 @@ class Simulation:
         ratio = lastValue/self.startMoney
         self.trades = account.trades
         if self.silent == False:
-            self.displayResultMsg(strategy.__name__, lastValue, ratio, self.trades)
+            self.displayResultMsg(strategy.__name__, self.idxStart, self.idxEnd, lastValue, ratio, self.trades)
         return ratio
 
 
@@ -358,9 +358,7 @@ def main():
         params = [0.3, -0.3, 1.0, 0.4, 1.0, 0.6]
         params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
         paramsSafest = [0.3, -0.3, 0.45134, 0.6169, 0.39278, 0.788256]
-        paramsCmaes = [0.6384061662936363, -0.6619728111749704, 1.124445707982012, 0.15998907010113295, 2.3330288361768816, -0.6894718752979803]
-        # demonstrate(data, emaOrderStrategy, paramsEmaOrderBest)
-         
-        demonstrate(data, weightedMajorEmasStrategy, paramsCmaes)
+        paramsCmaes = [0.6384061662936363, -0.6619728111749704, 1.124445707982012, 0.15998907010113295, 2.3330288361768816, -0.6894718752979803]         
+        demonstrate(data, weightedMajorEmasStrategy, paramsSafest)
 
 main()
