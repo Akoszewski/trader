@@ -148,13 +148,34 @@ def daysToIntervals(days, intervalsPerDay = 24):
     return math.floor(days * intervalsPerDay)
 
 def majorMovingAveragesStrategy(data, i, strategyParams):
-    sma20 = data.sma20[i]
-    sma50 = data.sma50[i]
-    sma100 = data.sma100[i]
-    sma200 = data.sma200[i]
-    if (data.closes[i] > sma20) and (data.closes[i] > sma50) and (data.closes[i] > sma100) and data.closes[i] > sma200:
+    ema20 = data.ema20[i]
+    ema50 = data.ema50[i]
+    ema100 = data.ema100[i]
+    ema200 = data.ema200[i]
+    if (data.closes[i] > ema20) and (data.closes[i] > ema50) and (data.closes[i] > ema100) and data.closes[i] > ema200:
         return "BUY"
-    elif (data.closes[i] < sma20) and (data.closes[i] < sma50) and (data.closes[i] < sma100) and (data.closes[i] < sma200):
+    elif (data.closes[i] < ema20) and (data.closes[i] < ema50) and (data.closes[i] < ema100) and (data.closes[i] < ema200):
+        return "SELL"
+    else:
+        return "HOLD"
+
+def movingAveragesStrategy(data, i, strategyParams):
+    ema1 = data.ema20[i]
+    ema2 = data.ema100[i]
+    if (data.closes[i] > ema1) and (data.closes[i] > ema2) and (ema1 > ema2):
+        return "BUY"
+    elif (data.closes[i] < ema1) and (data.closes[i] < ema2) and (ema1 < ema2):
+        return "SELL"
+    else:
+        return "HOLD"
+
+def movingAveragesStrategyIncreasing(data, i, strategyParams):
+    ema1 = data.ema20[i]
+    ema2 = data.ema100[i]
+    prevEma2 = data.ema100[i-5]
+    if (data.closes[i] > ema1) and (data.closes[i] > ema2) and (ema1 > ema2) and prevEma2 < ema2:
+        return "BUY"
+    elif (data.closes[i] < ema1) and (data.closes[i] < ema2) and (ema1 < ema2):
         return "SELL"
     else:
         return "HOLD"
@@ -283,16 +304,15 @@ class StrategyTester:
         return averageRatio / averageRatioRef
 
 
-
 def demonstrate(data, strategy, params):
     chunkSize = daysToIntervals(300)
-    startDelay = daysToIntervals(200)
+    startDelay = 200
     print("Demonstrating result for chosen parameters...")
-    result = StrategyTester.testStrategy(20, strategy, data, params, chunkSize, startDelay, True)
+    result = StrategyTester.testStrategy(100, strategy, data, params, chunkSize, startDelay, False)
 
 def train(data, strategy):
     chunkSize = daysToIntervals(300)
-    startDelay = daysToIntervals(200)
+    startDelay = 201
 
     print("Tuning parameters...")
 
@@ -327,16 +347,20 @@ def main():
     data = readData("./data/hourly/eth.csv")
     data.initTechnicals()
 
+    plt.plot(data.closes)
+    # plt.show()
+
     training = False
 
     if (training):
-        # train(data, weightedMajorEmasStrategy)
-        train(data, emaOrderStrategy)
+        train(data, weightedMajorEmasStrategy)
     else:
         params = [0.3, -0.3, 1.0, 0.4, 1.0, 0.6]
         params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
         paramsSafest = [0.3, -0.3, 0.45134, 0.6169, 0.39278, 0.788256]
-        paramsEmaOrder = genRandomEmaOrderStrategyParams()
-        demonstrate(data, emaOrderStrategy, paramsEmaOrder)
+        paramsCmaes = [0.6384061662936363, -0.6619728111749704, 1.124445707982012, 0.15998907010113295, 2.3330288361768816, -0.6894718752979803]
+        # demonstrate(data, emaOrderStrategy, paramsEmaOrderBest)
+         
+        demonstrate(data, weightedMajorEmasStrategy, paramsCmaes)
 
 main()
