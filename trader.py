@@ -7,63 +7,107 @@ import math
 import pandas as pd
 import pandas_ta as pta
 import itertools
+import numba as nb
+from typing import List
+from numba.experimental import jitclass
 
 # Main function is at the bottom of the file :)
 
+def getSlice(N, splitRatio, isTest):
+    if isTest:
+        begin = int(N * splitRatio)
+        end = N
+    else:
+        begin = 0
+        end = int(N * splitRatio)
+    return [i for i in range(end-1, begin-1, -1)]
+
 # unix, date, symbol, open, high, low, close, VolumeBTC, VolumeUSDT, tradecount
-class DataPoints:
-    def __init__(self, rawData, indices):
-        self.dates = []
-        self.opens = []
-        self.highs = []
-        self.lows = []
-        self.closes = []
-        for row in reversed(rawData):
-            if row[0] == '#':
-                continue
-            row = row.split(",")
-            self.dates.append(row[indices[0]])
-            self.opens.append(float(row[indices[1]]))
-            self.highs.append(float(row[indices[2]]))
-            self.lows.append(float(row[indices[3]]))
-            self.closes.append(float(row[indices[4]]))
-            self.sma20 = []
-            self.sma50 = []
-            self.sma100 = []
-            self.sma200 = []
-            self.ema20 = []
-            self.ema50 = []
-            self.ema100 = []
-            self.ema200 = []
-            self.rsi = []
-            self.macd = []
+spec = [
+    ('opens', nb.float64[:]),
+    ('highs', nb.float64[:]),
+    ('lows', nb.float64[:]),
+    ('closes', nb.float64[:]),
+    ('sma20', nb.float64[:]),
+    ('sma50', nb.float64[:]),
+    ('sma100', nb.float64[:]),
+    ('sma200', nb.float64[:]),
+    ('ema20', nb.float64[:]),
+    ('ema50', nb.float64[:]),
+    ('ema100', nb.float64[:]),
+    ('ema200', nb.float64[:]),
+    ('rsi', nb.float64[:]),
+    ('macd', nb.float64[:]),
+]
+@jitclass(spec)
+class DataPointsJit:
+    def __init__(self):
+        self.opens = np.empty(0, dtype=np.float64)
+        self.highs = np.empty(0, dtype=np.float64)
+        self.lows = np.empty(0, dtype=np.float64)
+        self.closes = np.empty(0, dtype=np.float64)
+        self.sma20 = np.empty(0, dtype=np.float64)
+        self.sma50 = np.empty(0, dtype=np.float64)
+        self.sma100 = np.empty(0, dtype=np.float64)
+        self.sma200 = np.empty(0, dtype=np.float64)
+        self.ema20 = np.empty(0, dtype=np.float64)
+        self.ema50 = np.empty(0, dtype=np.float64)
+        self.ema100 = np.empty(0, dtype=np.float64)
+        self.ema200 = np.empty(0, dtype=np.float64)
+        self.rsi = np.empty(0, dtype=nb.float64)
+        self.macd = np.empty(0, dtype=np.float64)
 
-    # def printDataPoint(self):
-        # print(f"Date: {self.date} open: {self.open} h: {self.high} l: {self.low} close: {self.close}")
-    
-    def initTechnicals(self):
-        print(f"Calculating technicals...")
-        prices = self.closes
-        df = pd.DataFrame(prices, columns =['closes'])
+def createDataPoints(rawData : List[str], indices, splitRatio, isTest) -> DataPointsJit:
+    opens = []
+    highs = []
+    lows = []
+    closes = []
+    for i in getSlice(len(rawData), splitRatio, isTest):
+        row = rawData[i]
+        if row[0] == '#':
+            continue
+        row = row.split(",")
+        opens.append(float(row[indices[1]]))
+        highs.append(float(row[indices[2]]))
+        lows.append(float(row[indices[3]]))
+        closes.append(float(row[indices[4]]))
 
-        self.sma20 = pta.sma(close = df['closes'], length = 20).to_numpy()
-        self.sma50 = pta.sma(close = df['closes'], length = 50).to_numpy()
-        self.sma100 = pta.sma(close = df['closes'], length = 100).to_numpy()
-        self.sma200 = pta.sma(close = df['closes'], length = 200).to_numpy()
-        self.ema20 = pta.ema(close = df['closes'], length = 20).to_numpy()
-        self.ema50 = pta.ema(close = df['closes'], length = 50).to_numpy()
-        self.ema100 = pta.ema(close = df['closes'], length = 100).to_numpy()
-        self.ema200 = pta.ema(close = df['closes'], length = 200).to_numpy()
-        self.rsi = pta.rsi(close = df['closes'], length = 14).to_numpy()
-        self.macd = pta.macd(close = df['closes'], length = 14).to_numpy()
+    dataPointsJit = DataPointsJit()
 
-def readData(filename, indices = [1,3,4,5,6]):
+    df = pd.DataFrame(closes, columns = ['closes'])
+    dataPointsJit.sma20 = pta.sma(close = df['closes'], length = 20).to_numpy()
+    dataPointsJit.sma50 = pta.sma(close = df['closes'], length = 50).to_numpy()
+    dataPointsJit.sma100 = pta.sma(close = df['closes'], length = 100).to_numpy()
+    dataPointsJit.sma200 = pta.sma(close = df['closes'], length = 200).to_numpy()
+    dataPointsJit.ema20 = pta.ema(close = df['closes'], length = 20).to_numpy()
+    dataPointsJit.ema50 = pta.ema(close = df['closes'], length = 50).to_numpy()
+    dataPointsJit.ema100 = pta.ema(close = df['closes'], length = 100).to_numpy()
+    dataPointsJit.ema200 = pta.ema(close = df['closes'], length = 200).to_numpy()
+    dataPointsJit.rsi = pta.rsi(close = df['closes'], length = 14).to_numpy()
+    # dataPointsJit.macd = pta.macd(close = df['closes'], length = 14).to_numpy()
+
+    dataPointsJit.opens = np.array(opens, dtype=np.float64)
+    dataPointsJit.highs = np.array(highs, dtype=np.float64)
+    dataPointsJit.lows = np.array(lows, dtype=np.float64)
+    dataPointsJit.closes = np.array(closes, dtype=np.float64)
+
+    return dataPointsJit
+
+def readData(filename, indices = [1,3,4,5,6], splitRatio = 1, isTest = False) -> DataPointsJit:
     data = []
     with open(filename, "r") as f:
         rawData = f.readlines()
-        data = DataPoints(rawData, indices)
+        data = createDataPoints(rawData, indices, splitRatio, isTest)
     return data
 
+spec = [
+    ('startMoney', nb.float64),
+    ('money', nb.float64),
+    ('stock', nb.float64),
+    ('provision', nb.float64),
+    ('trades', nb.int32),
+]
+@jitclass(spec)
 class Account:
     def __init__(self, startMoney, provision):
         self.startMoney = startMoney
@@ -90,13 +134,13 @@ class Account:
         return self.money + self.stock * price
 
 class Simulation:
-    def __init__(self, prices, idxStart, idxEnd, startMoney, provision = 0, silent = False):
+    def __init__(self, prices, idxStart, idxEnd, startMoney, provision = 0, silenceLevel = 1):
         self.prices = prices
         self.startMoney = startMoney
         self.provision = provision
         self.idxStart = idxStart
         self.idxEnd = idxEnd
-        self.silent = silent
+        self.silenceLevel = silenceLevel
         self.trades = 0
 
     def displayResultMsg(self, msg, start, end, lastValue, ratio, trades):
@@ -106,7 +150,7 @@ class Simulation:
         print(f"{msg} ({start} - {end}): Na koniec po {trades} tranzakcjach masz: {round(lastValue)} dol z zainwestowanych {self.startMoney}"
                 f" czyli {percentage}%")
 
-    def simulate(self, strategy, data, strategyParams, fractionOfTotalToTrade=1, step=1):
+    def simulate(self, strategy, data : DataPointsJit, strategyParams, fractionOfTotalToTrade=1, step=1):
         account = Account(self.startMoney, self.provision)
         lastValue = 0
         for i in range(self.idxStart, self.idxEnd, step):
@@ -119,13 +163,13 @@ class Simulation:
             lastValue = account.totalValue(self.prices[i])
         ratio = lastValue/self.startMoney
         self.trades = account.trades
-        if self.silent == False:
+        if self.silenceLevel == 0:
             self.displayResultMsg(strategy.__name__, self.idxStart, self.idxEnd, lastValue, ratio, self.trades)
         return ratio
 
 
 
-def holdStrategy(data, pricesSoFar, params):
+def holdStrategy(data : DataPointsJit, pricesSoFar, params):
     return "BUY"
 
 def getNumberedDataChunk(tradingDataLen, delay, num, maxnum):
@@ -180,7 +224,7 @@ def movingAveragesStrategyIncreasing(data, i, strategyParams):
     else:
         return "HOLD"
 
-def macdStrategy(data, i, strategyParams):
+def macdStrategy(data : DataPointsJit, i, strategyParams):
     macdLine = data.macd[i][0]
     macdDiff = data.macd[i][1]
     macdSignal = data.macd[i][2]
@@ -194,7 +238,7 @@ def macdStrategy(data, i, strategyParams):
         return "HOLD"
 
 
-def weightedMajorEmasStrategy(data, i, strategyParams):
+def weightedMajorEmasStrategy(data : DataPointsJit, i, strategyParams):
     ema20 = data.ema20[i]
     ema50 = data.ema50[i]
     ema100 = data.ema100[i]
@@ -225,7 +269,7 @@ def weightedMajorEmasStrategy(data, i, strategyParams):
     else:
         return "HOLD"
 
-def majorMovingAveragesCrossStrategy(data, i, strategyParams):
+def majorMovingAveragesCrossStrategy(data : DataPointsJit, i, strategyParams):
     if majorMovingAveragesStrategy(data, i) == "BUY" and majorMovingAveragesStrategy(data, i-1) != "BUY":
         return "BUY"
     elif majorMovingAveragesStrategy(data, i) == "SELL":
@@ -233,7 +277,7 @@ def majorMovingAveragesCrossStrategy(data, i, strategyParams):
     else:
         return "HOLD"
 
-def macdAndMovingStrategy(data, i, strategyParams):
+def macdAndMovingStrategy(data : DataPointsJit, i, strategyParams):
     if weightedMajorEmasStrategy(data, i, strategyParams) == "BUY" and macdStrategy(data, i, strategyParams) == "BUY":
         return "BUY"
     elif weightedMajorEmasStrategy(data, i, strategyParams) == "SELL" or macdStrategy(data, i, strategyParams) == "SELL":
@@ -241,7 +285,7 @@ def macdAndMovingStrategy(data, i, strategyParams):
     else:
         return "HOLD"
 
-def macdAndMovingStrategy2(data, i, strategyParams):
+def macdAndMovingStrategy2(data : DataPointsJit, i, strategyParams):
     if weightedMajorEmasStrategy(data, i, strategyParams) == "BUY" or data.macd[i][0] > 0:
         return "BUY"
     elif weightedMajorEmasStrategy(data, i, strategyParams) == "SELL" and data.macd[i][0] < 0:
@@ -260,7 +304,7 @@ def genRandomEmaOrderStrategyParams():
         params[permutation] = random.choice(["BUY", "SELL", "HOLD"])
     return params
 
-def emaOrderStrategy(data, i, strategyParams):
+def emaOrderStrategy(data : DataPointsJit, i, strategyParams):
     priceAvgs = [(data.closes[i], 1), (data.ema20[i], 2), (data.ema50[i], 3), (data.ema100[i], 4), (data.ema200[i], 5)]
     priceAvgs.sort(reverse = True)
     ranks = []
@@ -270,47 +314,49 @@ def emaOrderStrategy(data, i, strategyParams):
 
 
 class StrategyTester:
-    def doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent):
+    def doSimulation(i, iterations, strategy, data : DataPointsJit, strategyParams, chunkSize, startDelay, silenceLevel):
         [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(data.closes), startDelay, True)
         # print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
-        simulation = Simulation(data.closes, idxStart, idxEnd - 1, 10000, 0.001, isSilent)
+        simulation = Simulation(data.closes, idxStart, idxEnd - 1, 10000, 0.001, silenceLevel)
         ratio = simulation.simulate(strategy, data, strategyParams, 1)
 
         ratioRef = simulation.simulate(holdStrategy, data, strategyParams, 1)
         # print("")
         return [ratio, ratioRef]
 
-    def testStrategy(iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent):
+    def testStrategy(iterations, strategy, data : DataPointsJit, strategyParams, chunkSize, startDelay, silenceLevel):
         ratios = []
         ratiosRef = []
         for i in range(iterations):
             [ratio, ratioRef] = StrategyTester.doSimulation(
-                    i, iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent
+                    i, iterations, strategy, data, strategyParams, chunkSize, startDelay, silenceLevel
             )
             ratios.append(ratio)
             ratiosRef.append(ratioRef)
 
         averageRatio = sum(ratios)/len(ratios)
         averageRatioRef = sum(ratiosRef)/len(ratiosRef)
-        print("")
-        print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100, 2)}%")
-        print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100, 2)}%")
-        print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
-        print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
-        print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
-        print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
-        print("")
+        if silenceLevel <= 1:
+            print("")
+            print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100, 2)}%")
+            print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100, 2)}%")
+            print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
+            print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
+            print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
+            print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
+            print("")
         return averageRatio / averageRatioRef
 
 
-def demonstrate(data, strategy, params):
+
+def demonstrate(data : DataPointsJit, strategy, params, silenceLevel):
     chunkSize = daysToIntervals(300)
     startDelay = 200
     print("Demonstrating result for chosen parameters...")
-    result = StrategyTester.testStrategy(100, strategy, data, params, chunkSize, startDelay, False)
+    result = StrategyTester.testStrategy(20, strategy, data, params, chunkSize, startDelay, silenceLevel)
 
-def train(data, strategy):
+def train(data : DataPointsJit, strategy):
     chunkSize = daysToIntervals(300)
     startDelay = 201
 
@@ -345,12 +391,12 @@ def train(data, strategy):
 def main():
     # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
     data = readData("./data/hourly/eth.csv")
-    data.initTechnicals()
 
     plt.plot(data.closes)
     # plt.show()
 
     training = False
+    silenceLevel = 1 # 0->verbose, 2->mute
 
     if (training):
         train(data, weightedMajorEmasStrategy)
@@ -359,6 +405,7 @@ def main():
         params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
         paramsSafest = [0.3, -0.3, 0.45134, 0.6169, 0.39278, 0.788256]
         paramsCmaes = [0.6384061662936363, -0.6619728111749704, 1.124445707982012, 0.15998907010113295, 2.3330288361768816, -0.6894718752979803]         
-        demonstrate(data, weightedMajorEmasStrategy, paramsSafest)
+        demonstrate(data, weightedMajorEmasStrategy, paramsSafest, silenceLevel)
 
-main()
+if __name__ == '__main__':
+    main()
