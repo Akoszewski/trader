@@ -56,6 +56,13 @@ class DataPoints:
         self.ema200 = pta.ema(close = df['closes'], length = 200).to_numpy()
         self.rsi = pta.rsi(close = df['closes'], length = 14).to_numpy()
         self.macd = pta.macd(close = df['closes'], length = 14).to_numpy()
+    
+    def toConcretePoint(self, i):
+        return np.array([self.sma20[i], self.sma50[i], self.sma100[i], self.sma200[i],
+                self.ema20[i], self.ema50[i], self.ema100[i], self.ema200[i]
+                # , self.rsi[i], self.macd[i]
+                ],
+                dtype=np.float32)
 
 def readData(filename, indices = [1,3,4,5,6]):
     data = []
@@ -342,9 +349,46 @@ def train(data, strategy):
     print(f"Best parameters are: {bestParams}")
     return bestParams
 
+def createTestOrTrainData(data):
+    delay = 300
+    checkInterval = daysToIntervals(30) # interval after which stock price is tested
+    noOfRandomTrainingPoints = 1000
+
+    randomPointDataLength = 8
+    randomPointsArray = np.empty((0, randomPointDataLength))  # Replace randomPointShape[1] with the number of columns in the output of toConcretePoint
+    Y = np.array([])
+
+    for i in range(noOfRandomTrainingPoints):
+        randomPointIdx = random.randint(delay, len(data.closes) - checkInterval - 1)
+        randomPoint = data.toConcretePoint(randomPointIdx)
+        randomPointsArray = np.vstack((randomPointsArray, randomPoint))
+        result = data.closes[randomPointIdx + checkInterval] / data.closes[randomPointIdx]
+        binResult = (result > 1.0)
+        Y = np.append(Y, binResult)
+        x = np.array(Y)
+    return [randomPointsArray, Y]
+    
+import kerastest
+
 def main():
-    # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
     data = readData("./data/hourly/eth.csv")
+    data.initTechnicals()
+
+    X, Y = createTestOrTrainData(data)
+    Xtest, Ytest = createTestOrTrainData(data)
+
+    num_nonzeros = np.count_nonzero(Ytest)
+    # Calculate the percentage of zeros in the list
+    percentage_zeros = (num_nonzeros / len(Ytest)) * 100
+    print(f"Percentage of nonzeros: {percentage_zeros}%")
+
+    kerastest.trainKeras(X, Y, Xtest, Ytest)
+
+
+
+def mainOld():
+    # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
+    data = readData("./data/hourly/btc.csv")
     data.initTechnicals()
 
     plt.plot(data.closes)
