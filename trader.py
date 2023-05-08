@@ -351,7 +351,7 @@ def train(data, strategy):
 
 def createTestOrTrainData(data):
     delay = 300
-    checkInterval = daysToIntervals(30) # interval after which stock price is tested
+    checkInterval = daysToIntervals(2) # interval after which stock price is tested
     noOfRandomTrainingPoints = 1000
 
     randomPointDataLength = 8
@@ -360,12 +360,25 @@ def createTestOrTrainData(data):
 
     for i in range(noOfRandomTrainingPoints):
         randomPointIdx = random.randint(delay, len(data.closes) - checkInterval - 1)
-        randomPoint = data.toConcretePoint(randomPointIdx)
-        randomPointsArray = np.vstack((randomPointsArray, randomPoint))
-        result = data.closes[randomPointIdx + checkInterval] / data.closes[randomPointIdx]
+        result = data.sma20[randomPointIdx + checkInterval] / data.sma20[randomPointIdx]
         binResult = (result > 1.0)
         Y = np.append(Y, binResult)
-        x = np.array(Y)
+#        count = np.count_nonzero(Y == 1)
+#        if result > 1 and count > len(Y)/2:
+#            Y = Y[:-1]
+#            continue
+#        
+#        if result <= 1 and count <= len(Y)/2:
+#            Y = Y[:-1]
+#            continue
+            
+
+        randomPoint = data.toConcretePoint(randomPointIdx)
+        # normalize
+        for i in range(len(randomPoint)):
+            randomPoint[i] = randomPoint[i] / randomPoint[0]
+        randomPointsArray = np.vstack((randomPointsArray, randomPoint))
+        
     return [randomPointsArray, Y]
     
 import kerastest
@@ -380,9 +393,10 @@ def main():
     num_nonzeros = np.count_nonzero(Ytest)
     # Calculate the percentage of zeros in the list
     percentage_zeros = (num_nonzeros / len(Ytest)) * 100
-    print(f"Percentage of nonzeros: {percentage_zeros}%")
 
     kerastest.trainKeras(X, Y, Xtest, Ytest)
+    print(f"Percentage of nonzeros: {percentage_zeros}%")
+
 
 
 
