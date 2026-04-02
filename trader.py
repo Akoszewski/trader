@@ -5,7 +5,6 @@ import numpy as np
 import random
 import math
 import pandas as pd
-import pandas_ta as pta
 import itertools
 
 # Main function is at the bottom of the file :)
@@ -18,6 +17,16 @@ class DataPoints:
         self.highs = []
         self.lows = []
         self.closes = []
+        self.sma20 = []
+        self.sma50 = []
+        self.sma100 = []
+        self.sma200 = []
+        self.ema20 = []
+        self.ema50 = []
+        self.ema100 = []
+        self.ema200 = []
+        self.rsi = []
+        self.macd = []
         for row in reversed(rawData):
             if row[0] == '#':
                 continue
@@ -27,35 +36,44 @@ class DataPoints:
             self.highs.append(float(row[indices[2]]))
             self.lows.append(float(row[indices[3]]))
             self.closes.append(float(row[indices[4]]))
-            self.sma20 = []
-            self.sma50 = []
-            self.sma100 = []
-            self.sma200 = []
-            self.ema20 = []
-            self.ema50 = []
-            self.ema100 = []
-            self.ema200 = []
-            self.rsi = []
-            self.macd = []
 
     # def printDataPoint(self):
         # print(f"Date: {self.date} open: {self.open} h: {self.high} l: {self.low} close: {self.close}")
     
     def initTechnicals(self):
         print(f"Calculating technicals...")
-        prices = self.closes
-        df = pd.DataFrame(prices, columns =['closes'])
+        closes = pd.Series(self.closes, dtype=float)
 
-        self.sma20 = pta.sma(close = df['closes'], length = 20).to_numpy()
-        self.sma50 = pta.sma(close = df['closes'], length = 50).to_numpy()
-        self.sma100 = pta.sma(close = df['closes'], length = 100).to_numpy()
-        self.sma200 = pta.sma(close = df['closes'], length = 200).to_numpy()
-        self.ema20 = pta.ema(close = df['closes'], length = 20).to_numpy()
-        self.ema50 = pta.ema(close = df['closes'], length = 50).to_numpy()
-        self.ema100 = pta.ema(close = df['closes'], length = 100).to_numpy()
-        self.ema200 = pta.ema(close = df['closes'], length = 200).to_numpy()
-        self.rsi = pta.rsi(close = df['closes'], length = 14).to_numpy()
-        self.macd = pta.macd(close = df['closes'], length = 14).to_numpy()
+        self.sma20 = closes.rolling(window = 20, min_periods = 20).mean().to_numpy()
+        self.sma50 = closes.rolling(window = 50, min_periods = 50).mean().to_numpy()
+        self.sma100 = closes.rolling(window = 100, min_periods = 100).mean().to_numpy()
+        self.sma200 = closes.rolling(window = 200, min_periods = 200).mean().to_numpy()
+
+        self.ema20 = closes.ewm(span = 20, adjust = False, min_periods = 20).mean().to_numpy()
+        self.ema50 = closes.ewm(span = 50, adjust = False, min_periods = 50).mean().to_numpy()
+        self.ema100 = closes.ewm(span = 100, adjust = False, min_periods = 100).mean().to_numpy()
+        self.ema200 = closes.ewm(span = 200, adjust = False, min_periods = 200).mean().to_numpy()
+
+        price_diff = closes.diff()
+        gains = price_diff.clip(lower = 0)
+        losses = -price_diff.clip(upper = 0)
+        avg_gain = gains.ewm(alpha = 1 / 14, adjust = False, min_periods = 14).mean()
+        avg_loss = losses.ewm(alpha = 1 / 14, adjust = False, min_periods = 14).mean()
+        relative_strength = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + relative_strength))
+        rsi = rsi.mask(avg_loss == 0, 100.0)
+        self.rsi = rsi.to_numpy()
+
+        macd_fast = closes.ewm(span = 14, adjust = False, min_periods = 14).mean()
+        macd_slow = closes.ewm(span = 28, adjust = False, min_periods = 28).mean()
+        macd_line = macd_fast - macd_slow
+        macd_signal = macd_line.ewm(span = 9, adjust = False, min_periods = 9).mean()
+        macd_histogram = macd_line - macd_signal
+        self.macd = np.column_stack((
+            macd_line.to_numpy(),
+            macd_histogram.to_numpy(),
+            macd_signal.to_numpy(),
+        ))
 
 def readData(filename, indices = [1,3,4,5,6]):
     data = []
