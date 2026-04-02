@@ -9,6 +9,39 @@ import itertools
 
 # Main function is at the bottom of the file :)
 
+def calc_rsi_wilder(closes, period = 14):
+    closes = pd.Series(closes, dtype=float).reset_index(drop = True)
+    rsi = pd.Series(np.nan, index = closes.index, dtype=float)
+
+    if len(closes) <= period:
+        return rsi
+
+    price_diff = closes.diff()
+    gains = price_diff.clip(lower = 0).fillna(0.0)
+    losses = (-price_diff.clip(upper = 0)).fillna(0.0)
+
+    avg_gain = gains.iloc[1:period + 1].mean()
+    avg_loss = losses.iloc[1:period + 1].mean()
+
+    if avg_loss == 0:
+        rsi.iloc[period] = 100.0 if avg_gain > 0 else 50.0
+    else:
+        relative_strength = avg_gain / avg_loss
+        rsi.iloc[period] = 100 - (100 / (1 + relative_strength))
+
+    for i in range(period + 1, len(closes)):
+        avg_gain = ((avg_gain * (period - 1)) + gains.iloc[i]) / period
+        avg_loss = ((avg_loss * (period - 1)) + losses.iloc[i]) / period
+
+        if avg_loss == 0:
+            rsi.iloc[i] = 100.0 if avg_gain > 0 else 50.0
+            continue
+
+        relative_strength = avg_gain / avg_loss
+        rsi.iloc[i] = 100 - (100 / (1 + relative_strength))
+
+    return rsi
+
 # unix, date, symbol, open, high, low, close, VolumeBTC, VolumeUSDT, tradecount
 class DataPoints:
     def __init__(self, rawData, indices):
@@ -54,15 +87,7 @@ class DataPoints:
         self.ema100 = closes.ewm(span = 100, adjust = False, min_periods = 100).mean().to_numpy()
         self.ema200 = closes.ewm(span = 200, adjust = False, min_periods = 200).mean().to_numpy()
 
-        price_diff = closes.diff()
-        gains = price_diff.clip(lower = 0)
-        losses = -price_diff.clip(upper = 0)
-        avg_gain = gains.ewm(alpha = 1 / 14, adjust = False, min_periods = 14).mean()
-        avg_loss = losses.ewm(alpha = 1 / 14, adjust = False, min_periods = 14).mean()
-        relative_strength = avg_gain / avg_loss
-        rsi = 100 - (100 / (1 + relative_strength))
-        rsi = rsi.mask(avg_loss == 0, 100.0)
-        self.rsi = rsi.to_numpy()
+        self.rsi = calc_rsi_wilder(closes, 14).to_numpy()
 
         macd_fast = closes.ewm(span = 14, adjust = False, min_periods = 14).mean()
         macd_slow = closes.ewm(span = 28, adjust = False, min_periods = 28).mean()
@@ -288,23 +313,23 @@ def emaOrderStrategy(data, i, strategyParams):
 
 
 class StrategyTester:
-    def doSimulation(i, iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent):
+    def doSimulation(i, iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent):
         [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(data.closes), startDelay, True)
         # print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
-        simulation = Simulation(data.closes, idxStart, idxEnd - 1, 10000, 0.001, isSilent)
+        simulation = Simulation(data.closes, idxStart, idxEnd - 1, 10000, provision, isSilent)
         ratio = simulation.simulate(strategy, data, strategyParams, 1)
 
         ratioRef = simulation.simulate(holdStrategy, data, strategyParams, 1)
         # print("")
         return [ratio, ratioRef]
 
-    def testStrategy(iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent):
+    def testStrategy(iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent):
         ratios = []
         ratiosRef = []
         for i in range(iterations):
             [ratio, ratioRef] = StrategyTester.doSimulation(
-                    i, iterations, strategy, data, strategyParams, chunkSize, startDelay, isSilent
+                    i, iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent
             )
             ratios.append(ratio)
             ratiosRef.append(ratioRef)
@@ -322,13 +347,13 @@ class StrategyTester:
         return averageRatio / averageRatioRef
 
 
-def demonstrate(data, strategy, params):
+def demonstrate(data, provision, strategy, params):
     chunkSize = daysToIntervals(300)
     startDelay = 200
     print("Demonstrating result for chosen parameters...")
-    result = StrategyTester.testStrategy(100, strategy, data, params, chunkSize, startDelay, False)
+    result = StrategyTester.testStrategy(100, strategy, data, provision,params, chunkSize, startDelay, False)
 
-def train(data, strategy):
+def train(data, provision, strategy):
     chunkSize = daysToIntervals(300)
     startDelay = 201
 
@@ -347,7 +372,7 @@ def train(data, strategy):
     rankedSolutions = []
     i = 0
     for s in solutions:
-        result = StrategyTester.testStrategy(20, strategy, data, s, chunkSize, startDelay, True)
+        result = StrategyTester.testStrategy(20, strategy, data, provision, s, chunkSize, startDelay, True)
         rankedSolutions.append( (result, s) )
         rankedSolutions.sort()
         rankedSolutions.reverse()
@@ -361,8 +386,8 @@ def train(data, strategy):
     return bestParams
 
 def main():
-    # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
-    data = readData("./data/hourly/eth.csv")
+    data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
+    # data = readData("./data/hourly/eth.csv")
     data.initTechnicals()
 
     plt.plot(data.closes)
@@ -370,13 +395,12 @@ def main():
 
     training = False
 
+    provision = 0.001
+    
+
     if (training):
-        train(data, weightedMajorEmasStrategy)
+        train(data, provision, majorMovingAveragesStrategy)
     else:
-        params = [0.3, -0.3, 1.0, 0.4, 1.0, 0.6]
-        params2 = (0.3, -0.3, 0.0, 0.8, 0.0, 1.0)
-        paramsSafest = [0.3, -0.3, 0.45134, 0.6169, 0.39278, 0.788256]
-        paramsCmaes = [0.6384061662936363, -0.6619728111749704, 1.124445707982012, 0.15998907010113295, 2.3330288361768816, -0.6894718752979803]         
-        demonstrate(data, weightedMajorEmasStrategy, paramsSafest)
+        demonstrate(data, provision, majorMovingAveragesStrategy, [])
 
 main()
