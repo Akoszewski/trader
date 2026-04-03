@@ -1,3 +1,6 @@
 out.txt
 __pycache__/
 outcmaes/
+.venv/*
+__pycache__/*
+out.txt

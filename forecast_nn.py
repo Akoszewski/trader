@@ -342,7 +342,7 @@ def main():
     parser.add_argument("--horizon-hours", type = int, default = 24, help = "Forecast horizon in hours.")
     parser.add_argument("--window-hours", type = int, default = 168, help = "How many past hours to expose to the LSTM.")
     parser.add_argument("--target-return", type = float, default = 0.01, help = "Target gain threshold, e.g. 0.01 means +1%% within the horizon.")
-    parser.add_argument("--probability-threshold", type = float, default = 0.5, help = "Probability threshold used for converting model output into a positive prediction.")
+    parser.add_argument("--probability-threshold", type = float, default = 0.6, help = "Probability threshold used for converting model output into a positive prediction.")
     parser.add_argument("--hidden-size", type = int, default = 64, help = "LSTM hidden size.")
     parser.add_argument("--epochs", type = int, default = 50, help = "Maximum training epochs.")
     parser.add_argument("--batch-size", type = int, default = 64, help = "Batch size.")
