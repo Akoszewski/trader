@@ -1,0 +1,1 @@
+ python forecast_nn.py --file ./data/hourly/eth.csv --horizon-hours 24 --window-hours 168 --target-return 0.02
