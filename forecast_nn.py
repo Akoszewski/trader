@@ -95,6 +95,7 @@ def build_targets(frame, horizon_hours, target_return):
     future_max_return_values = np.full(len(frame), np.nan, dtype = np.float32)
     future_min_return_values = np.full(len(frame), np.nan, dtype = np.float32)
     target_hit_values = np.full(len(frame), np.nan, dtype = np.float32)
+    trade_return_values = np.full(len(frame), np.nan, dtype = np.float32)
 
     for idx in range(len(frame)):
         end_idx = idx + horizon_hours
@@ -110,16 +111,18 @@ def build_targets(frame, horizon_hours, target_return):
         future_max_return_values[idx] = np.max(future_highs) / current_close - 1.0
         future_min_return_values[idx] = np.min(future_lows) / current_close - 1.0
 
-        target_value = 0.0
+        target_value = np.nan
         for future_high, future_low in zip(future_highs, future_lows):
             if future_low <= stop_loss_price and future_high >= take_profit_price:
-                target_value = 0.0
+                target_value = np.nan
                 break
             if future_low <= stop_loss_price:
                 target_value = 0.0
+                trade_return_values[idx] = -target_return
                 break
             if future_high >= take_profit_price:
                 target_value = 1.0
+                trade_return_values[idx] = target_return
                 break
 
         target_hit_values[idx] = target_value
@@ -127,7 +130,8 @@ def build_targets(frame, horizon_hours, target_return):
     future_max_return = pd.Series(future_max_return_values, index = frame.index)
     future_min_return = pd.Series(future_min_return_values, index = frame.index)
     target_hit = pd.Series(target_hit_values, index = frame.index)
-    return future_return, future_max_return, future_min_return, target_hit
+    trade_return = pd.Series(trade_return_values, index = frame.index)
+    return future_return, future_max_return, future_min_return, target_hit, trade_return
 
 
 def chronological_split(num_rows, train_ratio = 0.7, validation_ratio = 0.15):
@@ -136,12 +140,13 @@ def chronological_split(num_rows, train_ratio = 0.7, validation_ratio = 0.15):
     return slice(0, train_end), slice(train_end, validation_end), slice(validation_end, num_rows)
 
 
-def build_sequence_dataset(frame, feature_columns, future_return, future_max_return, future_min_return, target_hit, window_hours):
+def build_sequence_dataset(frame, feature_columns, future_return, future_max_return, future_min_return, target_hit, trade_return, window_hours):
     feature_matrix = frame[feature_columns].to_numpy(dtype=np.float32)
     future_return_values = future_return.to_numpy(dtype=np.float32)
     future_max_return_values = future_max_return.to_numpy(dtype=np.float32)
     future_min_return_values = future_min_return.to_numpy(dtype=np.float32)
     target_hit_values = target_hit.to_numpy(dtype=np.float32)
+    trade_return_values = trade_return.to_numpy(dtype=np.float32)
     close_values = frame["close"].to_numpy(dtype=np.float32)
     date_values = frame["date"].to_numpy()
 
@@ -150,6 +155,7 @@ def build_sequence_dataset(frame, feature_columns, future_return, future_max_ret
     realized_returns = []
     realized_max_returns = []
     realized_min_returns = []
+    realized_trade_returns = []
     current_closes = []
     current_dates = []
 
@@ -163,7 +169,8 @@ def build_sequence_dataset(frame, feature_columns, future_return, future_max_ret
         target_max_return = future_max_return_values[end_idx]
         target_min_return = future_min_return_values[end_idx]
         target_value = target_hit_values[end_idx]
-        if np.isnan(target_return) or np.isnan(target_max_return) or np.isnan(target_min_return) or np.isnan(target_value):
+        trade_value = trade_return_values[end_idx]
+        if np.isnan(target_return) or np.isnan(target_max_return) or np.isnan(target_min_return) or np.isnan(target_value) or np.isnan(trade_value):
             continue
 
         sequences.append(window)
@@ -171,6 +178,7 @@ def build_sequence_dataset(frame, feature_columns, future_return, future_max_ret
         realized_returns.append(target_return)
         realized_max_returns.append(target_max_return)
         realized_min_returns.append(target_min_return)
+        realized_trade_returns.append(trade_value)
         current_closes.append(close_values[end_idx])
         current_dates.append(date_values[end_idx])
 
@@ -180,6 +188,7 @@ def build_sequence_dataset(frame, feature_columns, future_return, future_max_ret
         "future_return": np.asarray(realized_returns, dtype=np.float32),
         "future_max_return": np.asarray(realized_max_returns, dtype=np.float32),
         "future_min_return": np.asarray(realized_min_returns, dtype=np.float32),
+        "trade_return": np.asarray(realized_trade_returns, dtype=np.float32),
         "close": np.asarray(current_closes, dtype=np.float32),
         "date": np.asarray(current_dates),
     }
@@ -301,7 +310,7 @@ def predict_model(model, device, features, batch_size):
     return np.concatenate(predicted_probabilities)
 
 
-def summarize_predictions(name, target_hit, future_return, future_max_return, future_min_return, predicted_probability, target_return, probability_threshold):
+def summarize_predictions(name, target_hit, future_return, future_max_return, future_min_return, trade_return, predicted_probability, target_return, probability_threshold):
     predicted_hit = (predicted_probability >= probability_threshold).astype(int)
     direction_accuracy = accuracy_score(target_hit, predicted_hit)
     precision = precision_score(target_hit, predicted_hit, zero_division = 0)
@@ -312,32 +321,38 @@ def summarize_predictions(name, target_hit, future_return, future_max_return, fu
         "future_return": future_return,
         "future_max_return": future_max_return,
         "future_min_return": future_min_return,
+        "trade_return": trade_return,
         "predicted_probability": predicted_probability,
     })
     top_signals = summary.sort_values("predicted_probability", ascending = False).head(20)
+    predicted_signals = summary.loc[predicted_hit == 1]
     top_signal_hit_rate = top_signals["target_hit"].mean()
-    top_signal_realized_max_return = top_signals["future_max_return"].mean()
-    top_signal_realized_min_return = top_signals["future_min_return"].mean()
-    top_signal_realized_return = top_signals["future_return"].mean()
+    top_signal_trade_return = top_signals["trade_return"].mean()
+    predicted_signal_hit_rate = predicted_signals["target_hit"].mean() if len(predicted_signals) > 0 else float("nan")
+    predicted_signal_trade_return = predicted_signals["trade_return"].mean() if len(predicted_signals) > 0 else float("nan")
     predicted_positive_rate = predicted_hit.mean()
     base_positive_rate = summary["target_hit"].mean()
 
     print(f"{name} metrics:")
-    print(f"  Target: hit +{round(target_return * 100, 2)}% before -{round(target_return * 100, 2)}% within horizon")
+    print(f"  Target: hit +{round(target_return * 100, 2)}% before -{round(target_return * 100, 2)}% within horizon (neutral cases excluded)")
     print(f"  Accuracy: {round(direction_accuracy * 100, 2)}%")
     print(f"  Precision: {round(precision * 100, 2)}%")
     print(f"  Recall: {round(recall * 100, 2)}%")
     print(f"  Base hit rate: {round(base_positive_rate * 100, 2)}%")
     print(f"  Predicted positive rate: {round(predicted_positive_rate * 100, 2)}%")
     print(f"  Top 20 hit rate: {round(top_signal_hit_rate * 100, 2)}%")
-    print(f"  Top 20 average max return: {round(top_signal_realized_max_return * 100, 4)}%")
-    print(f"  Top 20 average min return: {round(top_signal_realized_min_return * 100, 4)}%")
-    print(f"  Top 20 average close-to-close return: {round(top_signal_realized_return * 100, 4)}%")
+    print(f"  Top 20 average trade return: {round(top_signal_trade_return * 100, 4)}%")
+    if len(predicted_signals) > 0:
+        print(f"  Predicted signals hit rate: {round(predicted_signal_hit_rate * 100, 2)}%")
+        print(f"  Predicted signals average trade return: {round(predicted_signal_trade_return * 100, 4)}%")
+    else:
+        print("  Predicted signals hit rate: n/a")
+        print("  Predicted signals average trade return: n/a")
     print("")
 
 
 def main():
-    parser = argparse.ArgumentParser(description = "Train an LSTM to predict whether price will hit a target gain within a future horizon.")
+    parser = argparse.ArgumentParser(description = "Train an LSTM to predict whether price will hit take-profit before stop-loss within a future horizon.")
     parser.add_argument("--file", default = "./data/hourly/eth.csv", help = "CSV file with hourly candles.")
     parser.add_argument("--horizon-hours", type = int, default = 24, help = "Forecast horizon in hours.")
     parser.add_argument("--window-hours", type = int, default = 168, help = "How many past hours to expose to the LSTM.")
@@ -354,14 +369,19 @@ def main():
     frame = load_price_frame(args.file, args.indices)
     frame = add_technicals(frame)
     feature_columns = build_feature_columns()
-    future_return, future_max_return, future_min_return, target_hit = build_targets(frame, args.horizon_hours, args.target_return)
+    future_return, future_max_return, future_min_return, target_hit, trade_return = build_targets(frame, args.horizon_hours, args.target_return)
 
-    dataset = build_sequence_dataset(frame, feature_columns, future_return, future_max_return, future_min_return, target_hit, args.window_hours)
+    labeled_examples = int(target_hit.notna().sum())
+    total_examples = len(target_hit)
+    print(f"Labeled examples: {labeled_examples}/{total_examples} ({round(100.0 * labeled_examples / max(total_examples, 1), 2)}%)")
+
+    dataset = build_sequence_dataset(frame, feature_columns, future_return, future_max_return, future_min_return, target_hit, trade_return, args.window_hours)
     features = dataset["features"]
     future_return = dataset["future_return"]
     future_max_return = dataset["future_max_return"]
     future_min_return = dataset["future_min_return"]
     target_hit = dataset["target_hit"]
+    trade_return = dataset["trade_return"]
 
     train_slice, validation_slice, test_slice = chronological_split(len(features))
 
@@ -389,8 +409,9 @@ def main():
         slice_future_return = future_return[data_slice]
         slice_future_max_return = future_max_return[data_slice]
         slice_future_min_return = future_min_return[data_slice]
+        slice_trade_return = trade_return[data_slice]
         predicted_probability = predict_model(model, device, slice_features, args.batch_size)
-        summarize_predictions(name, slice_target_hit, slice_future_return, slice_future_max_return, slice_future_min_return, predicted_probability, args.target_return, args.probability_threshold)
+        summarize_predictions(name, slice_target_hit, slice_future_return, slice_future_max_return, slice_future_min_return, slice_trade_return, predicted_probability, args.target_return, args.probability_threshold)
 
     test_features = scaled_features[test_slice]
     test_predicted_probability = predict_model(model, device, test_features, args.batch_size)
@@ -400,6 +421,7 @@ def main():
         "future_return": dataset["future_return"][test_slice],
         "future_max_return": dataset["future_max_return"][test_slice],
         "future_min_return": dataset["future_min_return"][test_slice],
+        "trade_return": dataset["trade_return"][test_slice],
         "target_hit": dataset["target_hit"][test_slice],
         "probability_hit": test_predicted_probability,
     })
