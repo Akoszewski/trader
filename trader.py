@@ -190,6 +190,9 @@ def getRandomDataChunk(minChunkLength, dataLength, delay, isChunkLengthFixed = F
 def daysToIntervals(days, intervalsPerDay = 24):
     return math.floor(days * intervalsPerDay)
 
+def isInvalidTechnicalValue(value):
+    return pd.isna(value)
+
 def majorMovingAveragesStrategy(data, i, strategyParams):
     ema20 = data.ema20[i]
     ema50 = data.ema50[i]
@@ -212,10 +215,38 @@ def movingAveragesStrategy(data, i, strategyParams):
     else:
         return "HOLD"
 
+def movingAveragesCrossStrategy(data, i, strategyParams):
+    if i <= 0:
+        return "HOLD"
+
+    fastEma = data.ema20[i]
+    slowEma = data.ema100[i]
+    prevFastEma = data.ema20[i - 1]
+    prevSlowEma = data.ema100[i - 1]
+
+    if isInvalidTechnicalValue(fastEma) or isInvalidTechnicalValue(slowEma):
+        return "HOLD"
+    if isInvalidTechnicalValue(prevFastEma) or isInvalidTechnicalValue(prevSlowEma):
+        return "HOLD"
+
+    if prevFastEma <= prevSlowEma and fastEma > slowEma:
+        return "BUY"
+    elif prevFastEma >= prevSlowEma and fastEma < slowEma:
+        return "SELL"
+    else:
+        return "HOLD"
+
 def movingAveragesStrategyIncreasing(data, i, strategyParams):
+    if i < 5:
+        return "HOLD"
+
     ema1 = data.ema20[i]
     ema2 = data.ema100[i]
     prevEma2 = data.ema100[i-5]
+
+    if isInvalidTechnicalValue(ema1) or isInvalidTechnicalValue(ema2) or isInvalidTechnicalValue(prevEma2):
+        return "HOLD"
+
     if (data.closes[i] > ema1) and (data.closes[i] > ema2) and (ema1 > ema2) and prevEma2 < ema2:
         return "BUY"
     elif (data.closes[i] < ema1) and (data.closes[i] < ema2) and (ema1 < ema2):
@@ -224,14 +255,45 @@ def movingAveragesStrategyIncreasing(data, i, strategyParams):
         return "HOLD"
 
 def macdStrategy(data, i, strategyParams):
+    if i <= 0:
+        return "HOLD"
+
     macdLine = data.macd[i][0]
     macdDiff = data.macd[i][1]
     macdSignal = data.macd[i][2]
     macdPrevLine = data.macd[i-1][0]
     macdPrevSignal = data.macd[i-1][2]
+
+    if isInvalidTechnicalValue(macdLine) or isInvalidTechnicalValue(macdPrevLine):
+        return "HOLD"
+
     if macdLine > 0 and macdPrevLine < 0:
         return "BUY"
     elif macdLine < 0 and macdPrevLine > 0:
+        return "SELL"
+    else:
+        return "HOLD"
+
+def rsiStrategy(data, i, strategyParams):
+    buyThreshold = 30
+    sellThreshold = 70
+
+    if len(strategyParams) >= 2:
+        buyThreshold = strategyParams[0]
+        sellThreshold = strategyParams[1]
+
+    if i <= 0:
+        return "HOLD"
+
+    rsi = data.rsi[i]
+    prevRsi = data.rsi[i - 1]
+
+    if isInvalidTechnicalValue(rsi) or isInvalidTechnicalValue(prevRsi):
+        return "HOLD"
+
+    if prevRsi <= buyThreshold and rsi > buyThreshold:
+        return "BUY"
+    elif prevRsi >= sellThreshold and rsi < sellThreshold:
         return "SELL"
     else:
         return "HOLD"
@@ -351,7 +413,7 @@ def demonstrate(data, provision, strategy, params):
     chunkSize = daysToIntervals(300)
     startDelay = 200
     print("Demonstrating result for chosen parameters...")
-    result = StrategyTester.testStrategy(100, strategy, data, provision,params, chunkSize, startDelay, False)
+    result = StrategyTester.testStrategy(100, strategy, data, provision, params, chunkSize, startDelay, False)
 
 def train(data, provision, strategy):
     chunkSize = daysToIntervals(300)
@@ -386,8 +448,8 @@ def train(data, provision, strategy):
     return bestParams
 
 def main():
-    data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
-    # data = readData("./data/hourly/eth.csv")
+    # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
+    data = readData("./data/hourly/btc.csv")
     data.initTechnicals()
 
     plt.plot(data.closes)
@@ -395,12 +457,13 @@ def main():
 
     training = False
 
-    provision = 0.001
+    provision = 0.00
     
 
     if (training):
-        train(data, provision, majorMovingAveragesStrategy)
+        train(data, provision, movingAveragesStrategy)
     else:
-        demonstrate(data, provision, majorMovingAveragesStrategy, [])
+        demonstrate(data, provision, movingAveragesStrategy, [])
 
-main()
+if __name__ == "__main__":
+    main()
