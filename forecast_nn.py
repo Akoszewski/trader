@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import accuracy_score, mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score
 from sklearn.preprocessing import StandardScaler
 from trader import readData
 
@@ -85,11 +85,49 @@ def build_feature_columns():
     ]
 
 
-def build_targets(frame, horizon_hours):
+def build_targets(frame, horizon_hours, target_return):
     future_close = frame["close"].shift(-horizon_hours)
     future_return = future_close / frame["close"] - 1.0
-    future_up = (future_return > 0).astype(int)
-    return future_return, future_up
+    closes = frame["close"].to_numpy(dtype = np.float32)
+    highs = frame["high"].to_numpy(dtype = np.float32)
+    lows = frame["low"].to_numpy(dtype = np.float32)
+
+    future_max_return_values = np.full(len(frame), np.nan, dtype = np.float32)
+    future_min_return_values = np.full(len(frame), np.nan, dtype = np.float32)
+    target_hit_values = np.full(len(frame), np.nan, dtype = np.float32)
+
+    for idx in range(len(frame)):
+        end_idx = idx + horizon_hours
+        if end_idx >= len(frame):
+            continue
+
+        current_close = closes[idx]
+        take_profit_price = current_close * (1.0 + target_return)
+        stop_loss_price = current_close * (1.0 - target_return)
+        future_highs = highs[idx + 1:end_idx + 1]
+        future_lows = lows[idx + 1:end_idx + 1]
+
+        future_max_return_values[idx] = np.max(future_highs) / current_close - 1.0
+        future_min_return_values[idx] = np.min(future_lows) / current_close - 1.0
+
+        target_value = 0.0
+        for future_high, future_low in zip(future_highs, future_lows):
+            if future_low <= stop_loss_price and future_high >= take_profit_price:
+                target_value = 0.0
+                break
+            if future_low <= stop_loss_price:
+                target_value = 0.0
+                break
+            if future_high >= take_profit_price:
+                target_value = 1.0
+                break
+
+        target_hit_values[idx] = target_value
+
+    future_max_return = pd.Series(future_max_return_values, index = frame.index)
+    future_min_return = pd.Series(future_min_return_values, index = frame.index)
+    target_hit = pd.Series(target_hit_values, index = frame.index)
+    return future_return, future_max_return, future_min_return, target_hit
 
 
 def chronological_split(num_rows, train_ratio = 0.7, validation_ratio = 0.15):
@@ -98,16 +136,20 @@ def chronological_split(num_rows, train_ratio = 0.7, validation_ratio = 0.15):
     return slice(0, train_end), slice(train_end, validation_end), slice(validation_end, num_rows)
 
 
-def build_sequence_dataset(frame, feature_columns, future_return, future_up, window_hours):
+def build_sequence_dataset(frame, feature_columns, future_return, future_max_return, future_min_return, target_hit, window_hours):
     feature_matrix = frame[feature_columns].to_numpy(dtype=np.float32)
     future_return_values = future_return.to_numpy(dtype=np.float32)
-    future_up_values = future_up.to_numpy(dtype=np.float32)
+    future_max_return_values = future_max_return.to_numpy(dtype=np.float32)
+    future_min_return_values = future_min_return.to_numpy(dtype=np.float32)
+    target_hit_values = target_hit.to_numpy(dtype=np.float32)
     close_values = frame["close"].to_numpy(dtype=np.float32)
     date_values = frame["date"].to_numpy()
 
     sequences = []
-    target_returns = []
-    target_ups = []
+    target_hits = []
+    realized_returns = []
+    realized_max_returns = []
+    realized_min_returns = []
     current_closes = []
     current_dates = []
 
@@ -118,20 +160,26 @@ def build_sequence_dataset(frame, feature_columns, future_return, future_up, win
             continue
 
         target_return = future_return_values[end_idx]
-        target_up = future_up_values[end_idx]
-        if np.isnan(target_return) or np.isnan(target_up):
+        target_max_return = future_max_return_values[end_idx]
+        target_min_return = future_min_return_values[end_idx]
+        target_value = target_hit_values[end_idx]
+        if np.isnan(target_return) or np.isnan(target_max_return) or np.isnan(target_min_return) or np.isnan(target_value):
             continue
 
         sequences.append(window)
-        target_returns.append(target_return)
-        target_ups.append(target_up)
+        target_hits.append(target_value)
+        realized_returns.append(target_return)
+        realized_max_returns.append(target_max_return)
+        realized_min_returns.append(target_min_return)
         current_closes.append(close_values[end_idx])
         current_dates.append(date_values[end_idx])
 
     return {
         "features": np.asarray(sequences, dtype=np.float32),
-        "future_return": np.asarray(target_returns, dtype=np.float32),
-        "future_up": np.asarray(target_ups, dtype=np.float32),
+        "target_hit": np.asarray(target_hits, dtype=np.float32),
+        "future_return": np.asarray(realized_returns, dtype=np.float32),
+        "future_max_return": np.asarray(realized_max_returns, dtype=np.float32),
+        "future_min_return": np.asarray(realized_min_returns, dtype=np.float32),
         "close": np.asarray(current_closes, dtype=np.float32),
         "date": np.asarray(current_dates),
     }
@@ -161,42 +209,36 @@ class LSTMForecastModel(nn.Module):
             nn.ReLU(),
             nn.Dropout(dropout),
         )
-        self.return_head = nn.Linear(hidden_size, 1)
-        self.direction_head = nn.Linear(hidden_size, 1)
+        self.hit_head = nn.Linear(hidden_size, 1)
 
     def forward(self, inputs):
         _, (hidden_state, _) = self.lstm(inputs)
         features = self.dropout(hidden_state[-1])
         features = self.shared(features)
-        return_prediction = self.return_head(features).squeeze(-1)
-        direction_logit = self.direction_head(features).squeeze(-1)
-        return return_prediction, direction_logit
+        hit_logit = self.hit_head(features).squeeze(-1)
+        return hit_logit
 
 
-def to_tensor_dataset(features, future_return, future_up):
+def to_tensor_dataset(features, target_hit):
     return TensorDataset(
         torch.tensor(features, dtype = torch.float32),
-        torch.tensor(future_return, dtype = torch.float32),
-        torch.tensor(future_up, dtype = torch.float32),
+        torch.tensor(target_hit, dtype = torch.float32),
     )
 
 
-def evaluate_loss(model, data_loader, device, return_mean, return_std):
-    mse_loss = nn.MSELoss()
+def evaluate_loss(model, data_loader, device):
     bce_loss = nn.BCEWithLogitsLoss()
     total_loss = 0.0
     total_examples = 0
 
     model.eval()
     with torch.no_grad():
-        for batch_features, batch_returns, batch_ups in data_loader:
+        for batch_features, batch_target_hit in data_loader:
             batch_features = batch_features.to(device)
-            batch_returns = batch_returns.to(device)
-            batch_ups = batch_ups.to(device)
+            batch_target_hit = batch_target_hit.to(device)
 
-            normalized_returns = (batch_returns - return_mean) / return_std
-            predicted_returns, predicted_logits = model(batch_features)
-            loss = mse_loss(predicted_returns, normalized_returns) + bce_loss(predicted_logits, batch_ups)
+            predicted_logits = model(batch_features)
+            loss = bce_loss(predicted_logits, batch_target_hit)
             batch_size = batch_features.shape[0]
             total_loss += loss.item() * batch_size
             total_examples += batch_size
@@ -204,20 +246,15 @@ def evaluate_loss(model, data_loader, device, return_mean, return_std):
     return total_loss / max(total_examples, 1)
 
 
-def train_model(train_features, train_returns, train_ups, validation_features, validation_returns, validation_ups, hidden_size, learning_rate, batch_size, epochs, patience):
+def train_model(train_features, train_target_hit, validation_features, validation_target_hit, hidden_size, learning_rate, batch_size, epochs, patience):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    return_mean = float(train_returns.mean())
-    return_std = float(train_returns.std())
-    if return_std == 0:
-        return_std = 1.0
 
     model = LSTMForecastModel(train_features.shape[-1], hidden_size, 0.2).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
-    mse_loss = nn.MSELoss()
     bce_loss = nn.BCEWithLogitsLoss()
 
-    train_loader = DataLoader(to_tensor_dataset(train_features, train_returns, train_ups), batch_size = batch_size, shuffle = False)
-    validation_loader = DataLoader(to_tensor_dataset(validation_features, validation_returns, validation_ups), batch_size = batch_size, shuffle = False)
+    train_loader = DataLoader(to_tensor_dataset(train_features, train_target_hit), batch_size = batch_size, shuffle = False)
+    validation_loader = DataLoader(to_tensor_dataset(validation_features, validation_target_hit), batch_size = batch_size, shuffle = False)
 
     best_state = copy.deepcopy(model.state_dict())
     best_validation_loss = float("inf")
@@ -225,20 +262,18 @@ def train_model(train_features, train_returns, train_ups, validation_features, v
 
     for _ in range(epochs):
         model.train()
-        for batch_features, batch_returns, batch_ups in train_loader:
+        for batch_features, batch_target_hit in train_loader:
             batch_features = batch_features.to(device)
-            batch_returns = batch_returns.to(device)
-            batch_ups = batch_ups.to(device)
+            batch_target_hit = batch_target_hit.to(device)
 
-            normalized_returns = (batch_returns - return_mean) / return_std
-            predicted_returns, predicted_logits = model(batch_features)
-            loss = mse_loss(predicted_returns, normalized_returns) + bce_loss(predicted_logits, batch_ups)
+            predicted_logits = model(batch_features)
+            loss = bce_loss(predicted_logits, batch_target_hit)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-        validation_loss = evaluate_loss(model, validation_loader, device, return_mean, return_std)
+        validation_loss = evaluate_loss(model, validation_loader, device)
         if validation_loss < best_validation_loss:
             best_validation_loss = validation_loss
             best_state = copy.deepcopy(model.state_dict())
@@ -249,54 +284,65 @@ def train_model(train_features, train_returns, train_ups, validation_features, v
                 break
 
     model.load_state_dict(best_state)
-    return model, device, return_mean, return_std
+    return model, device
 
 
-def predict_model(model, device, features, batch_size, return_mean, return_std):
+def predict_model(model, device, features, batch_size):
     data_loader = DataLoader(TensorDataset(torch.tensor(features, dtype = torch.float32)), batch_size = batch_size, shuffle = False)
-    predicted_returns = []
     predicted_probabilities = []
 
     model.eval()
     with torch.no_grad():
         for (batch_features,) in data_loader:
             batch_features = batch_features.to(device)
-            predicted_return_batch, predicted_logit_batch = model(batch_features)
-            predicted_returns.append((predicted_return_batch.cpu().numpy() * return_std) + return_mean)
-            predicted_probabilities.append(torch.sigmoid(predicted_logit_batch).cpu().numpy())
+            predicted_logits = model(batch_features)
+            predicted_probabilities.append(torch.sigmoid(predicted_logits).cpu().numpy())
 
-    return np.concatenate(predicted_returns), np.concatenate(predicted_probabilities)
+    return np.concatenate(predicted_probabilities)
 
 
-def summarize_predictions(name, future_return, future_up, predicted_return, predicted_up_probability):
-    predicted_up = (predicted_up_probability >= 0.5).astype(int)
-    direction_accuracy = accuracy_score(future_up, predicted_up)
-    mae = mean_absolute_error(future_return, predicted_return)
-    rmse = np.sqrt(mean_squared_error(future_return, predicted_return))
-    r2 = r2_score(future_return, predicted_return)
+def summarize_predictions(name, target_hit, future_return, future_max_return, future_min_return, predicted_probability, target_return, probability_threshold):
+    predicted_hit = (predicted_probability >= probability_threshold).astype(int)
+    direction_accuracy = accuracy_score(target_hit, predicted_hit)
+    precision = precision_score(target_hit, predicted_hit, zero_division = 0)
+    recall = recall_score(target_hit, predicted_hit, zero_division = 0)
 
     summary = pd.DataFrame({
+        "target_hit": target_hit,
         "future_return": future_return,
-        "predicted_return": predicted_return,
-        "probability_up": predicted_up_probability,
+        "future_max_return": future_max_return,
+        "future_min_return": future_min_return,
+        "predicted_probability": predicted_probability,
     })
-    top_signals = summary.sort_values("predicted_return", ascending = False).head(20)
+    top_signals = summary.sort_values("predicted_probability", ascending = False).head(20)
+    top_signal_hit_rate = top_signals["target_hit"].mean()
+    top_signal_realized_max_return = top_signals["future_max_return"].mean()
+    top_signal_realized_min_return = top_signals["future_min_return"].mean()
     top_signal_realized_return = top_signals["future_return"].mean()
+    predicted_positive_rate = predicted_hit.mean()
+    base_positive_rate = summary["target_hit"].mean()
 
     print(f"{name} metrics:")
-    print(f"  Direction accuracy: {round(direction_accuracy * 100, 2)}%")
-    print(f"  MAE of future return: {round(mae * 100, 4)}%")
-    print(f"  RMSE of future return: {round(rmse * 100, 4)}%")
-    print(f"  R^2 of future return: {round(r2, 4)}")
-    print(f"  Average realized return for top 20 predicted signals: {round(top_signal_realized_return * 100, 4)}%")
+    print(f"  Target: hit +{round(target_return * 100, 2)}% before -{round(target_return * 100, 2)}% within horizon")
+    print(f"  Accuracy: {round(direction_accuracy * 100, 2)}%")
+    print(f"  Precision: {round(precision * 100, 2)}%")
+    print(f"  Recall: {round(recall * 100, 2)}%")
+    print(f"  Base hit rate: {round(base_positive_rate * 100, 2)}%")
+    print(f"  Predicted positive rate: {round(predicted_positive_rate * 100, 2)}%")
+    print(f"  Top 20 hit rate: {round(top_signal_hit_rate * 100, 2)}%")
+    print(f"  Top 20 average max return: {round(top_signal_realized_max_return * 100, 4)}%")
+    print(f"  Top 20 average min return: {round(top_signal_realized_min_return * 100, 4)}%")
+    print(f"  Top 20 average close-to-close return: {round(top_signal_realized_return * 100, 4)}%")
     print("")
 
 
 def main():
-    parser = argparse.ArgumentParser(description = "Train a simple LSTM baseline for multi-day price forecasting.")
+    parser = argparse.ArgumentParser(description = "Train an LSTM to predict whether price will hit a target gain within a future horizon.")
     parser.add_argument("--file", default = "./data/hourly/eth.csv", help = "CSV file with hourly candles.")
-    parser.add_argument("--horizon-hours", type = int, default = 72, help = "Forecast horizon in hours.")
+    parser.add_argument("--horizon-hours", type = int, default = 24, help = "Forecast horizon in hours.")
     parser.add_argument("--window-hours", type = int, default = 168, help = "How many past hours to expose to the LSTM.")
+    parser.add_argument("--target-return", type = float, default = 0.01, help = "Target gain threshold, e.g. 0.01 means +1%% within the horizon.")
+    parser.add_argument("--probability-threshold", type = float, default = 0.5, help = "Probability threshold used for converting model output into a positive prediction.")
     parser.add_argument("--hidden-size", type = int, default = 64, help = "LSTM hidden size.")
     parser.add_argument("--epochs", type = int, default = 50, help = "Maximum training epochs.")
     parser.add_argument("--batch-size", type = int, default = 64, help = "Batch size.")
@@ -308,24 +354,24 @@ def main():
     frame = load_price_frame(args.file, args.indices)
     frame = add_technicals(frame)
     feature_columns = build_feature_columns()
-    future_return, future_up = build_targets(frame, args.horizon_hours)
+    future_return, future_max_return, future_min_return, target_hit = build_targets(frame, args.horizon_hours, args.target_return)
 
-    dataset = build_sequence_dataset(frame, feature_columns, future_return, future_up, args.window_hours)
+    dataset = build_sequence_dataset(frame, feature_columns, future_return, future_max_return, future_min_return, target_hit, args.window_hours)
     features = dataset["features"]
     future_return = dataset["future_return"]
-    future_up = dataset["future_up"]
+    future_max_return = dataset["future_max_return"]
+    future_min_return = dataset["future_min_return"]
+    target_hit = dataset["target_hit"]
 
     train_slice, validation_slice, test_slice = chronological_split(len(features))
 
     scaled_features, _ = scale_sequence_features(features[train_slice], features)
 
-    model, device, return_mean, return_std = train_model(
+    model, device = train_model(
         scaled_features[train_slice],
-        future_return[train_slice],
-        future_up[train_slice],
+        target_hit[train_slice],
         scaled_features[validation_slice],
-        future_return[validation_slice],
-        future_up[validation_slice],
+        target_hit[validation_slice],
         args.hidden_size,
         args.learning_rate,
         args.batch_size,
@@ -339,33 +385,23 @@ def main():
         ("Test", test_slice),
     ]:
         slice_features = scaled_features[data_slice]
+        slice_target_hit = target_hit[data_slice]
         slice_future_return = future_return[data_slice]
-        slice_future_up = future_up[data_slice]
-        predicted_return, predicted_up_probability = predict_model(
-            model,
-            device,
-            slice_features,
-            args.batch_size,
-            return_mean,
-            return_std,
-        )
-        summarize_predictions(name, slice_future_return, slice_future_up, predicted_return, predicted_up_probability)
+        slice_future_max_return = future_max_return[data_slice]
+        slice_future_min_return = future_min_return[data_slice]
+        predicted_probability = predict_model(model, device, slice_features, args.batch_size)
+        summarize_predictions(name, slice_target_hit, slice_future_return, slice_future_max_return, slice_future_min_return, predicted_probability, args.target_return, args.probability_threshold)
 
     test_features = scaled_features[test_slice]
-    test_predicted_return, test_predicted_probability = predict_model(
-        model,
-        device,
-        test_features,
-        args.batch_size,
-        return_mean,
-        return_std,
-    )
+    test_predicted_probability = predict_model(model, device, test_features, args.batch_size)
     test_frame = pd.DataFrame({
         "date": dataset["date"][test_slice],
         "close": dataset["close"][test_slice],
         "future_return": dataset["future_return"][test_slice],
-        "predicted_return": test_predicted_return,
-        "probability_up": test_predicted_probability,
+        "future_max_return": dataset["future_max_return"][test_slice],
+        "future_min_return": dataset["future_min_return"][test_slice],
+        "target_hit": dataset["target_hit"][test_slice],
+        "probability_hit": test_predicted_probability,
     })
 
     print("Latest test predictions:")
