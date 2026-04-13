@@ -40,7 +40,59 @@ def load_price_frame(file_path, indices = [1, 3, 4, 5, 6]):
     return frame.reset_index(drop = True)
 
 
-def add_technicals(frame):
+def add_fourier_features(frame, fft_window_hours):
+    frame = frame.copy()
+    log_returns = frame["log_return_1h"].to_numpy(dtype = np.float64)
+
+    dominant_period = np.full(len(frame), np.nan, dtype = np.float32)
+    spectral_entropy = np.full(len(frame), np.nan, dtype = np.float32)
+    short_band_energy = np.full(len(frame), np.nan, dtype = np.float32)
+    medium_band_energy = np.full(len(frame), np.nan, dtype = np.float32)
+    long_band_energy = np.full(len(frame), np.nan, dtype = np.float32)
+
+    hann_window = np.hanning(fft_window_hours)
+    frequency_axis = np.fft.rfftfreq(fft_window_hours, d = 1.0)
+    non_zero_mask = frequency_axis > 0
+    frequency_axis = frequency_axis[non_zero_mask]
+
+    short_band_mask = (frequency_axis >= 1.0 / 12.0) & (frequency_axis <= 1.0 / 4.0)
+    medium_band_mask = (frequency_axis >= 1.0 / 48.0) & (frequency_axis < 1.0 / 12.0)
+    long_band_mask = (frequency_axis >= 1.0 / 168.0) & (frequency_axis < 1.0 / 48.0)
+
+    for end_idx in range(fft_window_hours - 1, len(frame)):
+        start_idx = end_idx - fft_window_hours + 1
+        window = log_returns[start_idx:end_idx + 1]
+        if np.isnan(window).any():
+            continue
+
+        centered_window = window - window.mean()
+        windowed_signal = centered_window * hann_window
+        power_spectrum = np.abs(np.fft.rfft(windowed_signal)) ** 2
+        power_spectrum = power_spectrum[non_zero_mask]
+        total_power = power_spectrum.sum()
+        if total_power <= 0:
+            continue
+
+        dominant_frequency = frequency_axis[np.argmax(power_spectrum)]
+        dominant_period[end_idx] = 1.0 / dominant_frequency
+
+        normalized_power = power_spectrum / total_power
+        spectral_entropy[end_idx] = float(
+            -(normalized_power * np.log(normalized_power + 1e-12)).sum() / np.log(len(normalized_power))
+        )
+        short_band_energy[end_idx] = float(power_spectrum[short_band_mask].sum() / total_power)
+        medium_band_energy[end_idx] = float(power_spectrum[medium_band_mask].sum() / total_power)
+        long_band_energy[end_idx] = float(power_spectrum[long_band_mask].sum() / total_power)
+
+    frame["fft_dominant_period"] = dominant_period
+    frame["fft_spectral_entropy"] = spectral_entropy
+    frame["fft_energy_4_12h"] = short_band_energy
+    frame["fft_energy_12_48h"] = medium_band_energy
+    frame["fft_energy_48_168h"] = long_band_energy
+    return frame
+
+
+def add_technicals(frame, fft_window_hours = 168, use_fft_features = True):
     closes = frame["close"]
     frame = frame.copy()
 
@@ -55,34 +107,78 @@ def add_technicals(frame):
     for period in [12, 24, 48, 100, 200]:
         frame[f"close_over_ema_{period}"] = closes / frame[f"ema_{period}"] - 1.0
 
+    if use_fft_features:
+        return add_fourier_features(frame, fft_window_hours)
     return frame
 
 
-def build_feature_columns():
-    return [
-        "return_1h",
-        "log_return_1h",
-        "range_pct",
-        "return_6h",
-        "return_12h",
-        "return_24h",
-        "return_48h",
-        "return_72h",
-        "return_168h",
-        "volatility_24h",
-        "volatility_48h",
-        "volatility_72h",
-        "volatility_168h",
-        "close_over_ema_12",
-        "close_over_ema_24",
-        "close_over_ema_48",
-        "close_over_ema_100",
-        "close_over_ema_200",
-        "rsi_14",
-        "macd_line",
-        "macd_signal",
-        "macd_hist",
-    ]
+def build_feature_columns(use_fft_features = True, feature_set = "full"):
+    feature_sets = {
+        "full": [
+            "return_1h",
+            "log_return_1h",
+            "range_pct",
+            "return_6h",
+            "return_12h",
+            "return_24h",
+            "return_48h",
+            "return_72h",
+            "return_168h",
+            "volatility_24h",
+            "volatility_48h",
+            "volatility_72h",
+            "volatility_168h",
+            "close_over_ema_12",
+            "close_over_ema_24",
+            "close_over_ema_48",
+            "close_over_ema_100",
+            "close_over_ema_200",
+            "rsi_14",
+            "macd_line",
+            "macd_signal",
+            "macd_hist",
+        ],
+        "compact": [
+            "log_return_1h",
+            "range_pct",
+            "return_6h",
+            "return_24h",
+            "return_72h",
+            "volatility_24h",
+            "volatility_72h",
+            "close_over_ema_24",
+            "close_over_ema_100",
+            "rsi_14",
+            "macd_hist",
+        ],
+        "returns-only": [
+            "log_return_1h",
+            "range_pct",
+            "return_6h",
+            "return_24h",
+            "return_72h",
+            "return_168h",
+            "volatility_24h",
+            "volatility_72h",
+            "volatility_168h",
+        ],
+    }
+
+    if feature_set not in feature_sets:
+        raise ValueError(f"Unknown feature set: {feature_set}")
+
+    feature_columns = list(feature_sets[feature_set])
+
+    if use_fft_features:
+        feature_columns.extend([
+            "fft_dominant_period",
+            "fft_spectral_entropy",
+            "fft_energy_4_12h",
+            "fft_energy_12_48h",
+            "fft_energy_48_168h",
+        ])
+
+    return feature_columns
 
 
 def build_targets(frame, horizon_hours, target_return):
@@ -358,6 +454,9 @@ def main():
     parser.add_argument("--window-hours", type = int, default = 168, help = "How many past hours to expose to the LSTM.")
     parser.add_argument("--target-return", type = float, default = 0.01, help = "Target gain threshold, e.g. 0.01 means +1%% within the horizon.")
     parser.add_argument("--probability-threshold", type = float, default = 0.6, help = "Probability threshold used for converting model output into a positive prediction.")
+    parser.add_argument("--fft-window-hours", type = int, default = 168, help = "Rolling window used to compute Fourier features from log returns.")
+    parser.add_argument("--disable-fft-features", action = "store_true", help = "Disable Fourier-based rolling features for an A/B comparison.")
+    parser.add_argument("--feature-set", choices = ["full", "compact", "returns-only"], default = "full", help = "Choose which base feature set to use.")
     parser.add_argument("--hidden-size", type = int, default = 64, help = "LSTM hidden size.")
     parser.add_argument("--epochs", type = int, default = 50, help = "Maximum training epochs.")
     parser.add_argument("--batch-size", type = int, default = 64, help = "Batch size.")
@@ -367,8 +466,11 @@ def main():
     args = parser.parse_args()
 
     frame = load_price_frame(args.file, args.indices)
-    frame = add_technicals(frame)
-    feature_columns = build_feature_columns()
+    use_fft_features = not args.disable_fft_features
+    frame = add_technicals(frame, args.fft_window_hours, use_fft_features)
+    feature_columns = build_feature_columns(use_fft_features, args.feature_set)
+    print(f"Using FFT features: {use_fft_features}")
+    print(f"Feature set: {args.feature_set} ({len(feature_columns)} features)")
     future_return, future_max_return, future_min_return, target_hit, trade_return = build_targets(frame, args.horizon_hours, args.target_return)
 
     labeled_examples = int(target_hit.notna().sum())
