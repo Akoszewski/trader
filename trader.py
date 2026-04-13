@@ -237,7 +237,42 @@ def isInvalidTechnicalValue(value):
     return pd.isna(value)
 
 
+def getWeightedEmaBuyThreshold(strategyParams):
+    if isinstance(strategyParams, dict):
+        return strategyParams["buyThreshold"]
+    return strategyParams[0]
+
+
+def getWeightedEmaSellThreshold(strategyParams):
+    if isinstance(strategyParams, dict):
+        return strategyParams["sellThreshold"]
+    return strategyParams[1]
+
+
+def getWeightedEmaWeights(strategyParams):
+    if isinstance(strategyParams, dict):
+        return strategyParams["weights"]
+    return strategyParams[2:6]
+
+
+def formatWeightedEmaParamsLiteral(strategyParams):
+    buyThreshold = round(getWeightedEmaBuyThreshold(strategyParams), 3)
+    sellThreshold = round(getWeightedEmaSellThreshold(strategyParams), 3)
+    weights = tuple(round(weight, 3) for weight in getWeightedEmaWeights(strategyParams))
+    emaMultiplier = round(getWeightedEmaMultiplier(strategyParams), 3)
+    return (
+        "{\n"
+        f'    "buyThreshold": {buyThreshold},\n'
+        f'    "sellThreshold": {sellThreshold},\n'
+        f'    "weights": {weights},\n'
+        f'    "emaMultiplier": {emaMultiplier},\n'
+        "}"
+    )
+
+
 def getWeightedEmaMultiplier(strategyParams):
+    if isinstance(strategyParams, dict):
+        return strategyParams.get("emaMultiplier", 1.0)
     if len(strategyParams) >= 7:
         return strategyParams[6]
     return 1.0
@@ -376,7 +411,9 @@ def weightedMajorEmasStrategy(data, i, strategyParams):
     if isInvalidTechnicalValue(ema100) or isInvalidTechnicalValue(ema200):
         return "HOLD"
 
-    weights = strategyParams[2:6]
+    buyThreshold = getWeightedEmaBuyThreshold(strategyParams)
+    sellThreshold = getWeightedEmaSellThreshold(strategyParams)
+    weights = getWeightedEmaWeights(strategyParams)
     score = 0
     if (data.closes[i] > ema20):
         score += weights[0]
@@ -395,9 +432,9 @@ def weightedMajorEmasStrategy(data, i, strategyParams):
     if (data.closes[i] < ema200):
         score -= weights[3]
 
-    if score > strategyParams[0] * np.sum(weights):
+    if score > buyThreshold * np.sum(weights):
         return "BUY"
-    if score < strategyParams[1] * np.sum(weights):
+    if score < sellThreshold * np.sum(weights):
         return "SELL"
     else:
         return "HOLD"
@@ -529,8 +566,13 @@ def printTrainingResult(label, trainingResult):
         print(f"  Test worst:   {round(testStats['worstRatio'], 4)}")
         print(f"  Train vs hold:{round(trainStats['relativeAverage'], 4)}")
         print(f"  Test vs hold: {round(testStats['relativeAverage'], 4)}")
-        print(f"  Params:       {params}")
+        print(f"  Buy threshold:{round(getWeightedEmaBuyThreshold(params), 4)}")
+        print(f"  Sell threshold:{round(getWeightedEmaSellThreshold(params), 4)}")
+        print(f"  Weights:      {getWeightedEmaWeights(params)}")
+        print(f"  EMA multiplier:{round(getWeightedEmaMultiplier(params), 4)}")
         print(f"  EMA periods:  {getWeightedEmaPeriods(params)}")
+        print("  Copyable params:")
+        print(formatWeightedEmaParamsLiteral(params))
         print("")
         return
 
@@ -540,6 +582,8 @@ def printTrainingResult(label, trainingResult):
     print(f"  Test score:  {round(testScore, 4)}")
     print(f"  Params:      {params}")
     print(f"  EMA periods: {getWeightedEmaPeriods(params)}")
+    print("  Copyable params:")
+    print(formatWeightedEmaParamsLiteral(params))
     print("")
 
 
@@ -704,19 +748,57 @@ def main():
     plt.plot(data.closes)
     # plt.show()
 
-    training = False
-
-    provision = 0.005
-    trainedResultBestForCryptoZeroProv = (1.314876519201772, 1.4190971357643607, (0.3, -0.3, 0.0, 0.8, 0.8, 0.2))
+    trainedResultBestForCryptoZeroProv = (
+        1.314876519201772,
+        1.4190971357643607,
+        {
+            "buyThreshold": 0.3,
+            "sellThreshold": -0.3,
+            "weights": (0.0, 0.8, 0.8, 0.2),
+            "emaMultiplier": 1.0,
+        },
+    )
     trainScore, testScore, paramsForCryptoZeroProv = trainedResultBestForCryptoZeroProv
-    
-    paramsForCryptoIncreasedTreshold = (0.3, -0.3, 0.0, 0.8, 0.8, 0.2)
-    paramsForCryptoWithProv = (0.505, -1.0, 0.294, 0.555, 0.466, 0.365)
-    paramsProtectBalancedTrainedOn2PromilesProvision = (0.425, -0.964, 0.387, 0.174, 0.965, 0.902, 2.906)
-    paramsProtectBalancedTrainedOn5PromilesProvision = (0.964, -0.195, 0.0, 0.407, 0.059, 0.322, 2.875)
-    paramsProtectBalancedTrainedOn1PercentProvision = (0.37, -0.887, 0.177, 0.621, 0.076, 0.509, 2.937)
-    paramsProtectBalancedTrainedOn5PromilesProvision2 = (0.907, -0.695, 0.864, 0.576, 0.221, 0.595, 2.958)
 
+    paramsForCryptoIncreasedTreshold = {
+        "buyThreshold": 0.3,
+        "sellThreshold": -0.3,
+        "weights": (0.0, 0.8, 0.8, 0.2),
+        "emaMultiplier": 1.0,
+    }
+    paramsForCryptoWithProv = {
+        "buyThreshold": 0.505,
+        "sellThreshold": -1.0,
+        "weights": (0.294, 0.555, 0.466, 0.365),
+        "emaMultiplier": 1.0,
+    }
+    paramsProtectBalancedTrainedOn2PromilesProvision = {
+        "buyThreshold": 0.425,
+        "sellThreshold": -0.964,
+        "weights": (0.387, 0.174, 0.965, 0.902),
+        "emaMultiplier": 2.906,
+    }
+    paramsProtectBalancedTrainedOn5PromilesProvision = {
+        "buyThreshold": 0.964,
+        "sellThreshold": -0.195,
+        "weights": (0.0, 0.407, 0.059, 0.322),
+        "emaMultiplier": 2.875,
+    }
+    paramsProtectBalancedTrainedOn1PercentProvision = {
+        "buyThreshold": 0.37,
+        "sellThreshold": -0.887,
+        "weights": (0.177, 0.621, 0.076, 0.509),
+        "emaMultiplier": 2.937,
+    }
+    paramsProtectBalancedTrainedOn5PromilesProvision2 = {
+        "buyThreshold": 0.907,
+        "sellThreshold": -0.695,
+        "weights": (0.864, 0.576, 0.221, 0.595),
+        "emaMultiplier": 2.958,
+    }
+
+    training = False
+    provision = 0.005
 
     if (training):
         bestResult = train(data, provision, weightedMajorEmasStrategy)
