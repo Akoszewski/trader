@@ -186,6 +186,18 @@ def getRandomDataChunk(minChunkLength, dataLength, delay, isChunkLengthFixed = F
         right = random.randint(left + diff, dataLength)
     return [left, right]
 
+def getRandomDataChunkInRange(minChunkLength, rangeStart, rangeEnd, isChunkLengthFixed = False):
+    diff = minChunkLength
+    if rangeEnd - rangeStart < diff:
+        raise ValueError(f"Range [{rangeStart}, {rangeEnd}) is too small for chunk length {diff}")
+
+    left = random.randint(rangeStart, rangeEnd - diff)
+    if isChunkLengthFixed:
+        right = left + diff
+    else:
+        right = random.randint(left + diff, rangeEnd)
+    return [left, right]
+
 
 def daysToIntervals(days, intervalsPerDay = 24):
     return math.floor(days * intervalsPerDay)
@@ -375,8 +387,16 @@ def emaOrderStrategy(data, i, strategyParams):
 
 
 class StrategyTester:
-    def doSimulation(i, iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent):
-        [idxStart, idxEnd] = getRandomDataChunk(chunkSize, len(data.closes), startDelay, True)
+    def doSimulation(i, iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent, rangeStart = None, rangeEnd = None):
+        if rangeStart is None:
+            rangeStart = startDelay
+        else:
+            rangeStart = max(rangeStart, startDelay)
+
+        if rangeEnd is None:
+            rangeEnd = len(data.closes)
+
+        [idxStart, idxEnd] = getRandomDataChunkInRange(chunkSize, rangeStart, rangeEnd, True)
         # print(f"{i+1}/{iterations} (range {idxStart} - {idxEnd}):")
 
         simulation = Simulation(data.closes, idxStart, idxEnd - 1, 10000, provision, isSilent)
@@ -386,12 +406,12 @@ class StrategyTester:
         # print("")
         return [ratio, ratioRef]
 
-    def testStrategy(iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent):
+    def testStrategy(iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent, rangeStart = None, rangeEnd = None):
         ratios = []
         ratiosRef = []
         for i in range(iterations):
             [ratio, ratioRef] = StrategyTester.doSimulation(
-                    i, iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent
+                    i, iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent, rangeStart, rangeEnd
             )
             ratios.append(ratio)
             ratiosRef.append(ratioRef)
@@ -408,6 +428,13 @@ class StrategyTester:
         print("")
         return averageRatio / averageRatioRef
 
+    def getTrainTestRanges(dataLength, startDelay, splitRatio = 0.5):
+        usableStart = startDelay
+        usableEnd = dataLength
+        usableLength = usableEnd - usableStart
+        splitPoint = usableStart + math.floor(usableLength * splitRatio)
+        return (usableStart, splitPoint), (splitPoint, usableEnd)
+
 
 def demonstrate(data, provision, strategy, params):
     chunkSize = daysToIntervals(300)
@@ -418,8 +445,11 @@ def demonstrate(data, provision, strategy, params):
 def train(data, provision, strategy):
     chunkSize = daysToIntervals(300)
     startDelay = 201
+    (trainStart, trainEnd), (testStart, testEnd) = StrategyTester.getTrainTestRanges(len(data.closes), startDelay)
 
     print("Tuning parameters...")
+    print(f"Training range: {trainStart} - {trainEnd}")
+    print(f"Test range: {testStart} - {testEnd}")
 
     solutions = []
     for s in range(100):
@@ -434,12 +464,13 @@ def train(data, provision, strategy):
     rankedSolutions = []
     i = 0
     for s in solutions:
-        result = StrategyTester.testStrategy(20, strategy, data, provision, s, chunkSize, startDelay, True)
-        rankedSolutions.append( (result, s) )
+        trainResult = StrategyTester.testStrategy(20, strategy, data, provision, s, chunkSize, startDelay, True, trainStart, trainEnd)
+        testResult = StrategyTester.testStrategy(20, strategy, data, provision, s, chunkSize, startDelay, True, testStart, testEnd)
+        rankedSolutions.append((trainResult, testResult, s))
         rankedSolutions.sort()
         rankedSolutions.reverse()
         i += 1
-        print(f"(Test {i}) parameters: {s} result: {result}")
+        print(f"(Test {i}) parameters: {s} train: {trainResult} test: {testResult}")
         print("")
 
     bestParams = rankedSolutions[0]
