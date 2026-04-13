@@ -698,28 +698,31 @@ def train(data, provision, strategy):
 
 def main():
     # data = readData("./data/hourly/EURUSD60-done.csv", [(0, 1), 2, 3, 4, 5])
-    data = readData("./data/hourly/btc.csv")
+    data = readData("./data/hourly/eth.csv")
     data.initTechnicals()
 
     plt.plot(data.closes)
     # plt.show()
 
-    training = True
+    training = False
 
     provision = 0.005
-
     trainedResultBestForCryptoZeroProv = (1.314876519201772, 1.4190971357643607, (0.3, -0.3, 0.0, 0.8, 0.8, 0.2))
     trainScore, testScore, paramsForCryptoZeroProv = trainedResultBestForCryptoZeroProv
     
     paramsForCryptoIncreasedTreshold = (0.3, -0.3, 0.0, 0.8, 0.8, 0.2)
     paramsForCryptoWithProv = (0.505, -1.0, 0.294, 0.555, 0.466, 0.365)
     paramsProtectBalancedTrainedOn2PromilesProvision = (0.425, -0.964, 0.387, 0.174, 0.965, 0.902, 2.906)
+    paramsProtectBalancedTrainedOn5PromilesProvision = (0.964, -0.195, 0.0, 0.407, 0.059, 0.322, 2.875)
+    paramsProtectBalancedTrainedOn1PercentProvision = (0.37, -0.887, 0.177, 0.621, 0.076, 0.509, 2.937)
+    paramsProtectBalancedTrainedOn5PromilesProvision2 = (0.907, -0.695, 0.864, 0.576, 0.221, 0.595, 2.958)
+
 
     if (training):
         bestResult = train(data, provision, weightedMajorEmasStrategy)
         printTrainingResult("Selected result:", bestResult)
     else:
-        demonstrate(data, provision, weightedMajorEmasStrategy, paramsProtectBalancedTrainedOn2PromilesProvision)
+        demonstrate(data, provision, weightedMajorEmasStrategy, paramsProtectBalancedTrainedOn5PromilesProvision2)
 
 if __name__ == "__main__":
     main()
