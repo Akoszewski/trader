@@ -9,6 +9,9 @@ import itertools
 
 # Main function is at the bottom of the file :)
 
+BASE_EMA_PERIODS = (20, 50, 100, 200)
+MAX_EMA_MULTIPLIER = 3.0
+
 def calc_rsi_wilder(closes, period = 14):
     closes = pd.Series(closes, dtype=float).reset_index(drop = True)
     rsi = pd.Series(np.nan, index = closes.index, dtype=float)
@@ -64,6 +67,7 @@ class DataPoints:
         self.ema50 = []
         self.ema100 = []
         self.ema200 = []
+        self.emaCache = dict()
         self.rsi = []
         self.macd = []
         parsedRows = []
@@ -101,6 +105,12 @@ class DataPoints:
         self.ema50 = closes.ewm(span = 50, adjust = False, min_periods = 50).mean().to_numpy()
         self.ema100 = closes.ewm(span = 100, adjust = False, min_periods = 100).mean().to_numpy()
         self.ema200 = closes.ewm(span = 200, adjust = False, min_periods = 200).mean().to_numpy()
+        self.emaCache = {
+            20: self.ema20,
+            50: self.ema50,
+            100: self.ema100,
+            200: self.ema200,
+        }
 
         self.rsi = calc_rsi_wilder(closes, 14).to_numpy()
 
@@ -114,6 +124,12 @@ class DataPoints:
             macd_histogram.to_numpy(),
             macd_signal.to_numpy(),
         ))
+
+    def getEma(self, period):
+        if period not in self.emaCache:
+            closes = pd.Series(self.closes, dtype=float)
+            self.emaCache[period] = closes.ewm(span = period, adjust = False, min_periods = period).mean().to_numpy()
+        return self.emaCache[period]
 
 def readData(filename, indices = [1,3,4,5,6]):
     data = []
@@ -219,6 +235,28 @@ def daysToIntervals(days, intervalsPerDay = 24):
 
 def isInvalidTechnicalValue(value):
     return pd.isna(value)
+
+
+def getWeightedEmaMultiplier(strategyParams):
+    if len(strategyParams) >= 7:
+        return strategyParams[6]
+    return 1.0
+
+
+def getWeightedEmaPeriods(strategyParams):
+    multiplier = getWeightedEmaMultiplier(strategyParams)
+    scaledPeriods = []
+    previousPeriod = 0
+    for basePeriod in BASE_EMA_PERIODS:
+        scaledPeriod = max(2, int(round(basePeriod * multiplier)))
+        scaledPeriod = max(scaledPeriod, previousPeriod + 1)
+        scaledPeriods.append(scaledPeriod)
+        previousPeriod = scaledPeriod
+    return tuple(scaledPeriods)
+
+
+def getWeightedEmaWarmup(strategyParams):
+    return getWeightedEmaPeriods(strategyParams)[-1]
 
 def majorMovingAveragesStrategy(data, i, strategyParams):
     ema20 = data.ema20[i]
@@ -327,11 +365,18 @@ def rsiStrategy(data, i, strategyParams):
 
 
 def weightedMajorEmasStrategy(data, i, strategyParams):
-    ema20 = data.ema20[i]
-    ema50 = data.ema50[i]
-    ema100 = data.ema100[i]
-    ema200 = data.ema200[i]
-    weights = strategyParams[2:]
+    emaPeriods = getWeightedEmaPeriods(strategyParams)
+    ema20 = data.getEma(emaPeriods[0])[i]
+    ema50 = data.getEma(emaPeriods[1])[i]
+    ema100 = data.getEma(emaPeriods[2])[i]
+    ema200 = data.getEma(emaPeriods[3])[i]
+
+    if isInvalidTechnicalValue(ema20) or isInvalidTechnicalValue(ema50):
+        return "HOLD"
+    if isInvalidTechnicalValue(ema100) or isInvalidTechnicalValue(ema200):
+        return "HOLD"
+
+    weights = strategyParams[2:6]
     score = 0
     if (data.closes[i] > ema20):
         score += weights[0]
@@ -457,72 +502,142 @@ def printTrainingResult(label, trainingResult):
     print(f"  Train score: {round(trainScore, 4)}")
     print(f"  Test score:  {round(testScore, 4)}")
     print(f"  Params:      {params}")
+    print(f"  EMA periods: {getWeightedEmaPeriods(params)}")
     print("")
+
+
+def scoreTrainingResult(trainingResult):
+    trainScore, testScore, _ = trainingResult
+    return min(trainScore, testScore) - 0.1 * abs(trainScore - testScore)
+
+
+def genRandomWeightedEmaParams():
+    return (
+        round(random.uniform(0.2, 1.0), 3),
+        round(random.uniform(-1.0, -0.2), 3),
+        round(random.uniform(0.0, 1.0), 3),
+        round(random.uniform(0.0, 1.0), 3),
+        round(random.uniform(0.0, 1.0), 3),
+        round(random.uniform(0.0, 1.0), 3),
+        round(random.uniform(0.5, MAX_EMA_MULTIPLIER), 3),
+    )
+
+
+def clampWeightedEmaParams(params):
+    buyThreshold = min(max(params[0], 0.0), 1.0)
+    sellThreshold = min(max(params[1], -1.0), 0.0)
+    weights = [min(max(weight, 0.0), 1.0) for weight in params[2:6]]
+    emaMultiplier = min(max(params[6], 0.5), MAX_EMA_MULTIPLIER)
+    return (
+        round(buyThreshold, 3),
+        round(sellThreshold, 3),
+        round(weights[0], 3),
+        round(weights[1], 3),
+        round(weights[2], 3),
+        round(weights[3], 3),
+        round(emaMultiplier, 3),
+    )
+
+
+def mutateWeightedEmaParams(params, stepScale):
+    mutated = [
+        params[0] + random.uniform(-stepScale, stepScale),
+        params[1] + random.uniform(-stepScale, stepScale),
+    ]
+
+    for weight in params[2:]:
+        mutated.append(weight + random.uniform(-stepScale, stepScale))
+
+    return clampWeightedEmaParams(tuple(mutated))
+
+
+def evaluateWeightedEmaParams(data, provision, params, chunkSize, startDelay, trainStart, trainEnd, testStart, testEnd, isSilent = True):
+    trainResult = StrategyTester.testStrategy(20, weightedMajorEmasStrategy, data, provision, params, chunkSize, startDelay, isSilent, trainStart, trainEnd)
+    testResult = StrategyTester.testStrategy(20, weightedMajorEmasStrategy, data, provision, params, chunkSize, startDelay, isSilent, testStart, testEnd)
+    return (trainResult, testResult, params)
 
 
 def demonstrate(data, provision, strategy, params):
     chunkSize = daysToIntervals(300)
-    startDelay = 200
+    startDelay = max(200, getWeightedEmaWarmup(params))
     print("Demonstrating result for chosen parameters...")
     result = StrategyTester.testStrategy(100, strategy, data, provision, params, chunkSize, startDelay, False)
 
 def train(data, provision, strategy):
     chunkSize = daysToIntervals(300)
-    startDelay = 201
+    startDelay = max(201, math.ceil(BASE_EMA_PERIODS[-1] * MAX_EMA_MULTIPLIER))
     (trainStart, trainEnd), (testStart, testEnd) = StrategyTester.getTrainTestRanges(len(data.closes), startDelay)
 
     print("Tuning parameters...")
     print(f"Training range: {trainStart} - {trainEnd}")
     print(f"Test range: {testStart} - {testEnd}")
 
-    solutions = []
-    for s in range(100):
-        solutions.append((
-                        0.3,
-                       -0.3,
-                        random.randint(0, 5)/5,
-                        random.randint(0, 5)/5,
-                        random.randint(0, 5)/5,
-                        random.randint(0, 5)/5))
+    if strategy != weightedMajorEmasStrategy:
+        raise ValueError("train() currently supports weightedMajorEmasStrategy only")
+
+    seedCount = 24
+    localRestarts = 5
+    localSteps = 18
 
     rankedSolutions = []
-    i = 0
-    for s in solutions:
-        trainResult = StrategyTester.testStrategy(20, strategy, data, provision, s, chunkSize, startDelay, True, trainStart, trainEnd)
-        testResult = StrategyTester.testStrategy(20, strategy, data, provision, s, chunkSize, startDelay, True, testStart, testEnd)
-        rankedSolutions.append((trainResult, testResult, s))
-        rankedSolutions.sort()
-        rankedSolutions.reverse()
-        i += 1
-        print(f"(Test {i}) parameters: {s} train: {trainResult} test: {testResult}")
-        print("")
+    for seedIndex in range(seedCount):
+        params = genRandomWeightedEmaParams()
+        result = evaluateWeightedEmaParams(data, provision, params, chunkSize, startDelay, trainStart, trainEnd, testStart, testEnd, True)
+        rankedSolutions.append(result)
+        print(f"(Seed {seedIndex + 1}) parameters: {params} objective: {round(scoreTrainingResult(result), 4)}")
 
-    bestResult = rankedSolutions[0]
+    rankedSolutions.sort(key = scoreTrainingResult, reverse = True)
+    bestSeeds = rankedSolutions[:localRestarts]
+
+    improvedSolutions = list(rankedSolutions)
+    for restartIndex, seedResult in enumerate(bestSeeds):
+        currentResult = seedResult
+        stepScale = 0.25
+        print("")
+        print(f"Local search {restartIndex + 1} starting from {currentResult[2]}")
+        for stepIndex in range(localSteps):
+            candidateParams = mutateWeightedEmaParams(currentResult[2], stepScale)
+            candidateResult = evaluateWeightedEmaParams(data, provision, candidateParams, chunkSize, startDelay, trainStart, trainEnd, testStart, testEnd, True)
+            if scoreTrainingResult(candidateResult) > scoreTrainingResult(currentResult):
+                currentResult = candidateResult
+                print(f"  Step {stepIndex + 1}: improved to objective {round(scoreTrainingResult(currentResult), 4)} params {currentResult[2]}")
+            stepScale *= 0.9
+        improvedSolutions.append(currentResult)
+
+    improvedSolutions.sort(key = scoreTrainingResult, reverse = True)
+    print("")
+    print("Top results:")
+    for rank, result in enumerate(improvedSolutions[:5], start = 1):
+        trainResult, testResult, params = result
+        print(f"  {rank}. objective={round(scoreTrainingResult(result), 4)} train={round(trainResult, 4)} test={round(testResult, 4)} params={params}")
+
+    bestResult = improvedSolutions[0]
     printTrainingResult("Best result:", bestResult)
     return bestResult
 
 def main():
-    data = readData("./data/hourly/EURUSD60-done.csv", [(0, 1), 2, 3, 4, 5])
-    # data = readData("./data/hourly/eth.csv")
+    # data = readData("./data/hourly/EURUSD60-done.csv", [(0, 1), 2, 3, 4, 5])
+    data = readData("./data/hourly/btc.csv")
     data.initTechnicals()
 
     plt.plot(data.closes)
-    plt.show()
+    # plt.show()
 
-    training = False
+    training = True
 
-    provision = 0.00
+    provision = 0.002
 
-    trainedResult = (1.314876519201772, 1.4190971357643607, (0.3, -0.3, 0.0, 0.8, 0.8, 0.2))
-    trainScore, testScore, params = trainedResult
+    trainedResultBestForCryptoZeroProv = (1.314876519201772, 1.4190971357643607, (0.3, -0.3, 0.0, 0.8, 0.8, 0.2))
+    trainScore, testScore, paramsForCryptoZeroProv = trainedResultBestForCryptoZeroProv
     
+    paramsForCryptoIncreasedTreshold = (0.3, -0.3, 0.0, 0.8, 0.8, 0.2)
+    paramsForCryptoWithProv = (0.505, -1.0, 0.294, 0.555, 0.466, 0.365)
 
     if (training):
         bestResult = train(data, provision, weightedMajorEmasStrategy)
         printTrainingResult("Selected result:", bestResult)
     else:
-        printTrainingResult("Using saved result:", (trainScore, testScore, params))
-        demonstrate(data, provision, weightedMajorEmasStrategy, params)
+        demonstrate(data, provision, weightedMajorEmasStrategy, paramsForCryptoWithProv)
 
 if __name__ == "__main__":
     main()
