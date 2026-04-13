@@ -42,6 +42,12 @@ def calc_rsi_wilder(closes, period = 14):
 
     return rsi
 
+
+def getRowValue(row, indexSpec):
+    if isinstance(indexSpec, (tuple, list)):
+        return " ".join(row[index].strip() for index in indexSpec)
+    return row[indexSpec].strip()
+
 # unix, date, symbol, open, high, low, close, VolumeBTC, VolumeUSDT, tradecount
 class DataPoints:
     def __init__(self, rawData, indices):
@@ -60,11 +66,20 @@ class DataPoints:
         self.ema200 = []
         self.rsi = []
         self.macd = []
-        for row in reversed(rawData):
-            if row[0] == '#':
+        parsedRows = []
+        for rawRow in rawData:
+            if len(rawRow) == 0 or rawRow[0] == '#':
                 continue
-            row = row.split(",")
-            self.dates.append(row[indices[0]])
+            parsedRows.append(rawRow.strip().split(","))
+
+        if len(parsedRows) >= 2:
+            firstTimestamp = getRowValue(parsedRows[0], indices[0])
+            lastTimestamp = getRowValue(parsedRows[-1], indices[0])
+            if firstTimestamp > lastTimestamp:
+                parsedRows.reverse()
+
+        for row in parsedRows:
+            self.dates.append(getRowValue(row, indices[0]))
             self.opens.append(float(row[indices[1]]))
             self.highs.append(float(row[indices[2]]))
             self.lows.append(float(row[indices[3]]))
@@ -487,12 +502,12 @@ def train(data, provision, strategy):
     return bestResult
 
 def main():
-    # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
-    data = readData("./data/hourly/btc.csv")
+    data = readData("./data/hourly/EURUSD60-done.csv", [(0, 1), 2, 3, 4, 5])
+    # data = readData("./data/hourly/eth.csv")
     data.initTechnicals()
 
     plt.plot(data.closes)
-    # plt.show()
+    plt.show()
 
     training = False
 
