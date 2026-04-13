@@ -436,6 +436,15 @@ class StrategyTester:
         return (usableStart, splitPoint), (splitPoint, usableEnd)
 
 
+def printTrainingResult(label, trainingResult):
+    trainScore, testScore, params = trainingResult
+    print(label)
+    print(f"  Train score: {round(trainScore, 4)}")
+    print(f"  Test score:  {round(testScore, 4)}")
+    print(f"  Params:      {params}")
+    print("")
+
+
 def demonstrate(data, provision, strategy, params):
     chunkSize = daysToIntervals(300)
     startDelay = 200
@@ -473,10 +482,9 @@ def train(data, provision, strategy):
         print(f"(Test {i}) parameters: {s} train: {trainResult} test: {testResult}")
         print("")
 
-    bestParams = rankedSolutions[0]
-
-    print(f"Best parameters are: {bestParams}")
-    return bestParams
+    bestResult = rankedSolutions[0]
+    printTrainingResult("Best result:", bestResult)
+    return bestResult
 
 def main():
     # data = readData("./data/hourly/EURUSD60-done.csv", [0, 2, 3, 4, 5])
@@ -489,12 +497,17 @@ def main():
     training = False
 
     provision = 0.00
+
+    trainedResult = (1.314876519201772, 1.4190971357643607, (0.3, -0.3, 0.0, 0.8, 0.8, 0.2))
+    trainScore, testScore, params = trainedResult
     
 
     if (training):
-        train(data, provision, movingAveragesStrategy)
+        bestResult = train(data, provision, weightedMajorEmasStrategy)
+        printTrainingResult("Selected result:", bestResult)
     else:
-        demonstrate(data, provision, movingAveragesStrategy, [])
+        printTrainingResult("Using saved result:", (trainScore, testScore, params))
+        demonstrate(data, provision, weightedMajorEmasStrategy, params)
 
 if __name__ == "__main__":
     main()
