@@ -467,6 +467,24 @@ class StrategyTester:
         return [ratio, ratioRef]
 
     def testStrategy(iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent, rangeStart = None, rangeEnd = None):
+        stats = StrategyTester.getStrategyStats(iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent, rangeStart, rangeEnd)
+
+        averageRatio = stats["averageRatio"]
+        averageRatioRef = stats["averageRatioRef"]
+        ratios = stats["ratios"]
+        ratiosRef = stats["ratiosRef"]
+
+        print("")
+        print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100, 2)}%")
+        print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100, 2)}%")
+        print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
+        print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
+        print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
+        print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
+        print("")
+        return averageRatio / averageRatioRef
+
+    def getStrategyStats(iterations, strategy, data, provision, strategyParams, chunkSize, startDelay, isSilent = True, rangeStart = None, rangeEnd = None):
         ratios = []
         ratiosRef = []
         for i in range(iterations):
@@ -478,15 +496,17 @@ class StrategyTester:
 
         averageRatio = sum(ratios)/len(ratios)
         averageRatioRef = sum(ratiosRef)/len(ratiosRef)
-        print("")
-        print(f"Average ratio of start money for chosen strategy: {round(averageRatio * 100, 2)}%")
-        print(f"Average ratio of start money for holding: {round(sum(ratiosRef)/len(ratiosRef) * 100, 2)}%")
-        print(f"Best for chosen strategy: {round((max(ratios)) * 100)}%")
-        print(f"Best for holding: {round((max(ratiosRef)) * 100)}%")
-        print(f"Worst for chosen strategy: {round((min(ratios)) * 100)}%")
-        print(f"Worst for holding: {round((min(ratiosRef)) * 100)}%")
-        print("")
-        return averageRatio / averageRatioRef
+        return {
+            "ratios": ratios,
+            "ratiosRef": ratiosRef,
+            "averageRatio": averageRatio,
+            "averageRatioRef": averageRatioRef,
+            "bestRatio": max(ratios),
+            "bestRatioRef": max(ratiosRef),
+            "worstRatio": min(ratios),
+            "worstRatioRef": min(ratiosRef),
+            "relativeAverage": averageRatio / averageRatioRef,
+        }
 
     def getTrainTestRanges(dataLength, startDelay, splitRatio = 0.5):
         usableStart = startDelay
@@ -497,6 +517,23 @@ class StrategyTester:
 
 
 def printTrainingResult(label, trainingResult):
+    if isinstance(trainingResult, dict):
+        trainStats = trainingResult["trainStats"]
+        testStats = trainingResult["testStats"]
+        params = trainingResult["params"]
+        print(label)
+        print(f"  Objective:    {round(trainingResult['objective'], 4)}")
+        print(f"  Train avg:    {round(trainStats['averageRatio'], 4)}")
+        print(f"  Test avg:     {round(testStats['averageRatio'], 4)}")
+        print(f"  Train worst:  {round(trainStats['worstRatio'], 4)}")
+        print(f"  Test worst:   {round(testStats['worstRatio'], 4)}")
+        print(f"  Train vs hold:{round(trainStats['relativeAverage'], 4)}")
+        print(f"  Test vs hold: {round(testStats['relativeAverage'], 4)}")
+        print(f"  Params:       {params}")
+        print(f"  EMA periods:  {getWeightedEmaPeriods(params)}")
+        print("")
+        return
+
     trainScore, testScore, params = trainingResult
     print(label)
     print(f"  Train score: {round(trainScore, 4)}")
@@ -507,8 +544,18 @@ def printTrainingResult(label, trainingResult):
 
 
 def scoreTrainingResult(trainingResult):
-    trainScore, testScore, _ = trainingResult
-    return min(trainScore, testScore) - 0.1 * abs(trainScore - testScore)
+    if not isinstance(trainingResult, dict):
+        trainScore, testScore, _ = trainingResult
+        return min(trainScore, testScore) - 0.1 * abs(trainScore - testScore)
+
+    trainStats = trainingResult["trainStats"]
+    testStats = trainingResult["testStats"]
+    worstProtection = min(trainStats["worstRatio"], testStats["worstRatio"])
+    averageProtection = min(trainStats["averageRatio"], testStats["averageRatio"])
+    relativeAverage = min(trainStats["relativeAverage"], testStats["relativeAverage"])
+    stabilityPenalty = 0.1 * abs(trainStats["averageRatio"] - testStats["averageRatio"])
+    stabilityPenalty += 0.15 * abs(trainStats["worstRatio"] - testStats["worstRatio"])
+    return 0.55 * worstProtection + 0.3 * averageProtection + 0.15 * relativeAverage - stabilityPenalty
 
 
 def genRandomWeightedEmaParams():
@@ -552,9 +599,37 @@ def mutateWeightedEmaParams(params, stepScale):
 
 
 def evaluateWeightedEmaParams(data, provision, params, chunkSize, startDelay, trainStart, trainEnd, testStart, testEnd, isSilent = True):
-    trainResult = StrategyTester.testStrategy(20, weightedMajorEmasStrategy, data, provision, params, chunkSize, startDelay, isSilent, trainStart, trainEnd)
-    testResult = StrategyTester.testStrategy(20, weightedMajorEmasStrategy, data, provision, params, chunkSize, startDelay, isSilent, testStart, testEnd)
-    return (trainResult, testResult, params)
+    trainStats = StrategyTester.getStrategyStats(
+        20,
+        weightedMajorEmasStrategy,
+        data,
+        provision,
+        params,
+        chunkSize,
+        startDelay,
+        isSilent = isSilent,
+        rangeStart = trainStart,
+        rangeEnd = trainEnd,
+    )
+    testStats = StrategyTester.getStrategyStats(
+        20,
+        weightedMajorEmasStrategy,
+        data,
+        provision,
+        params,
+        chunkSize,
+        startDelay,
+        isSilent = isSilent,
+        rangeStart = testStart,
+        rangeEnd = testEnd,
+    )
+    result = {
+        "trainStats": trainStats,
+        "testStats": testStats,
+        "params": params,
+    }
+    result["objective"] = scoreTrainingResult(result)
+    return result
 
 
 def demonstrate(data, provision, strategy, params):
@@ -594,13 +669,13 @@ def train(data, provision, strategy):
         currentResult = seedResult
         stepScale = 0.25
         print("")
-        print(f"Local search {restartIndex + 1} starting from {currentResult[2]}")
+        print(f"Local search {restartIndex + 1} starting from {currentResult['params']}")
         for stepIndex in range(localSteps):
-            candidateParams = mutateWeightedEmaParams(currentResult[2], stepScale)
+            candidateParams = mutateWeightedEmaParams(currentResult["params"], stepScale)
             candidateResult = evaluateWeightedEmaParams(data, provision, candidateParams, chunkSize, startDelay, trainStart, trainEnd, testStart, testEnd, True)
             if scoreTrainingResult(candidateResult) > scoreTrainingResult(currentResult):
                 currentResult = candidateResult
-                print(f"  Step {stepIndex + 1}: improved to objective {round(scoreTrainingResult(currentResult), 4)} params {currentResult[2]}")
+                print(f"  Step {stepIndex + 1}: improved to objective {round(scoreTrainingResult(currentResult), 4)} params {currentResult['params']}")
             stepScale *= 0.9
         improvedSolutions.append(currentResult)
 
@@ -608,8 +683,14 @@ def train(data, provision, strategy):
     print("")
     print("Top results:")
     for rank, result in enumerate(improvedSolutions[:5], start = 1):
-        trainResult, testResult, params = result
-        print(f"  {rank}. objective={round(scoreTrainingResult(result), 4)} train={round(trainResult, 4)} test={round(testResult, 4)} params={params}")
+        trainStats = result["trainStats"]
+        testStats = result["testStats"]
+        params = result["params"]
+        print(
+            f"  {rank}. objective={round(scoreTrainingResult(result), 4)} "
+            f"trainAvg={round(trainStats['averageRatio'], 4)} testAvg={round(testStats['averageRatio'], 4)} "
+            f"trainWorst={round(trainStats['worstRatio'], 4)} testWorst={round(testStats['worstRatio'], 4)} params={params}"
+        )
 
     bestResult = improvedSolutions[0]
     printTrainingResult("Best result:", bestResult)
@@ -625,19 +706,20 @@ def main():
 
     training = True
 
-    provision = 0.002
+    provision = 0.005
 
     trainedResultBestForCryptoZeroProv = (1.314876519201772, 1.4190971357643607, (0.3, -0.3, 0.0, 0.8, 0.8, 0.2))
     trainScore, testScore, paramsForCryptoZeroProv = trainedResultBestForCryptoZeroProv
     
     paramsForCryptoIncreasedTreshold = (0.3, -0.3, 0.0, 0.8, 0.8, 0.2)
     paramsForCryptoWithProv = (0.505, -1.0, 0.294, 0.555, 0.466, 0.365)
+    paramsProtectBalancedTrainedOn2PromilesProvision = (0.425, -0.964, 0.387, 0.174, 0.965, 0.902, 2.906)
 
     if (training):
         bestResult = train(data, provision, weightedMajorEmasStrategy)
         printTrainingResult("Selected result:", bestResult)
     else:
-        demonstrate(data, provision, weightedMajorEmasStrategy, paramsForCryptoWithProv)
+        demonstrate(data, provision, weightedMajorEmasStrategy, paramsProtectBalancedTrainedOn2PromilesProvision)
 
 if __name__ == "__main__":
     main()
