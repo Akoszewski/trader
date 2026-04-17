@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import math
+import os
 import pandas as pd
 import itertools
 
@@ -12,6 +13,7 @@ import itertools
 BASE_EMA_PERIODS = (20, 50, 100, 200)
 MIN_EMA_MULTIPLIER = 15
 MAX_EMA_MULTIPLIER = 30.0
+DEFAULT_PRICE_INDICES = [1,3,4,5,6]
 
 def calc_rsi_wilder(closes, period = 14):
     closes = pd.Series(closes, dtype=float).reset_index(drop = True)
@@ -52,6 +54,16 @@ def getRowValue(row, indexSpec):
         return " ".join(row[index].strip() for index in indexSpec)
     return row[indexSpec].strip()
 
+
+def getRequiredIndices(indices):
+    requiredIndices = []
+    for indexSpec in indices:
+        if isinstance(indexSpec, (tuple, list)):
+            requiredIndices.extend(indexSpec)
+        else:
+            requiredIndices.append(indexSpec)
+    return requiredIndices
+
 # unix, date, symbol, open, high, low, close, VolumeBTC, VolumeUSDT, tradecount
 class DataPoints:
     def __init__(self, rawData, indices):
@@ -72,10 +84,24 @@ class DataPoints:
         self.rsi = []
         self.macd = []
         parsedRows = []
+        requiredIndices = getRequiredIndices(indices)
+        maxRequiredIndex = max(requiredIndices)
         for rawRow in rawData:
             if len(rawRow) == 0 or rawRow[0] == '#':
                 continue
-            parsedRows.append(rawRow.strip().split(","))
+            row = rawRow.strip().split(",")
+            if len(row) <= maxRequiredIndex:
+                continue
+
+            try:
+                float(row[indices[1]])
+                float(row[indices[2]])
+                float(row[indices[3]])
+                float(row[indices[4]])
+            except ValueError:
+                continue
+
+            parsedRows.append(row)
 
         if len(parsedRows) >= 2:
             firstTimestamp = getRowValue(parsedRows[0], indices[0])
@@ -132,12 +158,105 @@ class DataPoints:
             self.emaCache[period] = closes.ewm(span = period, adjust = False, min_periods = period).mean().to_numpy()
         return self.emaCache[period]
 
-def readData(filename, indices = [1,3,4,5,6]):
+def readData(filename, indices = DEFAULT_PRICE_INDICES):
     data = []
     with open(filename, "r") as f:
         rawData = f.readlines()
         data = DataPoints(rawData, indices)
     return data
+
+
+def loadMarketsFromDirectory(directoryPath, indices = DEFAULT_PRICE_INDICES):
+    if not os.path.isdir(directoryPath):
+        raise ValueError(f"Directory does not exist: {directoryPath}")
+
+    marketFiles = []
+    for entry in sorted(os.listdir(directoryPath)):
+        filePath = os.path.join(directoryPath, entry)
+        if os.path.isfile(filePath) and entry.lower().endswith(".csv"):
+            marketFiles.append(filePath)
+
+    if len(marketFiles) == 0:
+        raise ValueError(f"No CSV files found in {directoryPath}")
+
+    markets = []
+    for filePath in marketFiles:
+        print(f"Loading {filePath}...")
+        data = readData(filePath, indices)
+        data.initTechnicals()
+        markets.append({
+            "name": os.path.basename(filePath),
+            "path": filePath,
+            "data": data,
+        })
+
+    return markets
+
+
+def filterEligibleMarkets(markets, startDelay, chunkSize):
+    eligibleMarkets = []
+    skippedMarkets = []
+
+    for market in markets:
+        usableLength = len(market["data"].closes) - startDelay
+        if usableLength >= chunkSize:
+            eligibleMarkets.append(market)
+        else:
+            skippedMarkets.append((market["name"], usableLength))
+
+    for marketName, usableLength in skippedMarkets:
+        print(f"Skipping {marketName}: usable length {usableLength} is smaller than chunk size {chunkSize}")
+
+    if len(eligibleMarkets) == 0:
+        raise ValueError("No eligible markets left after filtering by chunk size and warmup")
+
+    return eligibleMarkets
+
+
+def getMarketSequence(markets, iterations):
+    marketSequence = []
+    marketIndices = list(range(len(markets)))
+
+    while len(marketSequence) < iterations:
+        random.shuffle(marketIndices)
+        for marketIndex in marketIndices:
+            marketSequence.append(markets[marketIndex])
+            if len(marketSequence) >= iterations:
+                break
+
+    return marketSequence
+
+
+def aggregateStrategyStats(ratios, ratiosRef, perMarketRatios):
+    averageRatio = sum(ratios)/len(ratios)
+    averageRatioRef = sum(ratiosRef)/len(ratiosRef)
+
+    perMarket = dict()
+    for marketName, marketResult in perMarketRatios.items():
+        marketRatios = marketResult["ratios"]
+        marketRatiosRef = marketResult["ratiosRef"]
+        perMarket[marketName] = {
+            "averageRatio": sum(marketRatios) / len(marketRatios),
+            "averageRatioRef": sum(marketRatiosRef) / len(marketRatiosRef),
+            "worstRatio": min(marketRatios),
+            "worstRatioRef": min(marketRatiosRef),
+            "bestRatio": max(marketRatios),
+            "bestRatioRef": max(marketRatiosRef),
+            "samples": len(marketRatios),
+        }
+
+    return {
+        "ratios": ratios,
+        "ratiosRef": ratiosRef,
+        "averageRatio": averageRatio,
+        "averageRatioRef": averageRatioRef,
+        "bestRatio": max(ratios),
+        "bestRatioRef": max(ratiosRef),
+        "worstRatio": min(ratios),
+        "worstRatioRef": min(ratiosRef),
+        "relativeAverage": averageRatio / averageRatioRef,
+        "perMarket": perMarket,
+    }
 
 class Account:
     def __init__(self, startMoney, provision):
@@ -556,6 +675,60 @@ class StrategyTester:
             "relativeAverage": averageRatio / averageRatioRef,
         }
 
+    def getMarketsStrategyStats(iterations, strategy, markets, provision, strategyParams, chunkSize, startDelay, isSilent = True):
+        ratios = []
+        ratiosRef = []
+        perMarketRatios = dict()
+
+        for market in getMarketSequence(markets, iterations):
+            marketName = market["name"]
+            data = market["data"]
+            [ratio, ratioRef] = StrategyTester.doSimulation(
+                0,
+                iterations,
+                strategy,
+                data,
+                provision,
+                strategyParams,
+                chunkSize,
+                startDelay,
+                isSilent,
+            )
+            ratios.append(ratio)
+            ratiosRef.append(ratioRef)
+
+            if marketName not in perMarketRatios:
+                perMarketRatios[marketName] = {
+                    "ratios": [],
+                    "ratiosRef": [],
+                }
+            perMarketRatios[marketName]["ratios"].append(ratio)
+            perMarketRatios[marketName]["ratiosRef"].append(ratioRef)
+
+        return aggregateStrategyStats(ratios, ratiosRef, perMarketRatios)
+
+    def testMarkets(iterations, strategy, markets, provision, strategyParams, chunkSize, startDelay, isSilent):
+        stats = StrategyTester.getMarketsStrategyStats(iterations, strategy, markets, provision, strategyParams, chunkSize, startDelay, isSilent)
+
+        print("")
+        print(f"Average ratio of start money for chosen strategy: {round(stats['averageRatio'] * 100, 2)}%")
+        print(f"Average ratio of start money for holding: {round(stats['averageRatioRef'] * 100, 2)}%")
+        print(f"Best for chosen strategy: {round((stats['bestRatio']) * 100)}%")
+        print(f"Best for holding: {round((stats['bestRatioRef']) * 100)}%")
+        print(f"Worst for chosen strategy: {round((stats['worstRatio']) * 100)}%")
+        print(f"Worst for holding: {round((stats['worstRatioRef']) * 100)}%")
+        print("")
+
+        for marketName, marketStats in sorted(stats["perMarket"].items()):
+            print(
+                f"  {marketName}: avg={round(marketStats['averageRatio'], 4)} "
+                f"hold={round(marketStats['averageRatioRef'], 4)} "
+                f"worst={round(marketStats['worstRatio'], 4)} samples={marketStats['samples']}"
+            )
+
+        print("")
+        return stats["relativeAverage"]
+
     def getTrainTestRanges(dataLength, startDelay, splitRatio = 0.5):
         usableStart = startDelay
         usableEnd = dataLength
@@ -653,30 +826,26 @@ def mutateWeightedEmaParams(params, stepScale):
     return clampWeightedEmaParams(tuple(mutated))
 
 
-def evaluateWeightedEmaParams(data, provision, params, chunkSize, startDelay, trainStart, trainEnd, testStart, testEnd, isSilent = True):
-    trainStats = StrategyTester.getStrategyStats(
+def evaluateWeightedEmaParams(trainMarkets, testMarkets, provision, params, chunkSize, startDelay, isSilent = True):
+    trainStats = StrategyTester.getMarketsStrategyStats(
         20,
         weightedMajorEmasStrategy,
-        data,
+        trainMarkets,
         provision,
         params,
         chunkSize,
         startDelay,
         isSilent = isSilent,
-        rangeStart = trainStart,
-        rangeEnd = trainEnd,
     )
-    testStats = StrategyTester.getStrategyStats(
+    testStats = StrategyTester.getMarketsStrategyStats(
         20,
         weightedMajorEmasStrategy,
-        data,
+        testMarkets,
         provision,
         params,
         chunkSize,
         startDelay,
         isSilent = isSilent,
-        rangeStart = testStart,
-        rangeEnd = testEnd,
     )
     result = {
         "trainStats": trainStats,
@@ -687,20 +856,22 @@ def evaluateWeightedEmaParams(data, provision, params, chunkSize, startDelay, tr
     return result
 
 
-def demonstrate(data, provision, strategy, params):
+def demonstrate(markets, provision, strategy, params):
     chunkSize = daysToIntervals(300)
     startDelay = max(200, getWeightedEmaWarmup(params))
+    markets = filterEligibleMarkets(markets, startDelay, chunkSize)
     print("Demonstrating result for chosen parameters...")
-    result = StrategyTester.testStrategy(100, strategy, data, provision, params, chunkSize, startDelay, False)
+    StrategyTester.testMarkets(100, strategy, markets, provision, params, chunkSize, startDelay, False)
 
-def train(data, provision, strategy):
+def train(trainMarkets, testMarkets, provision, strategy):
     chunkSize = daysToIntervals(300)
     startDelay = max(201, math.ceil(BASE_EMA_PERIODS[-1] * MAX_EMA_MULTIPLIER))
-    (trainStart, trainEnd), (testStart, testEnd) = StrategyTester.getTrainTestRanges(len(data.closes), startDelay)
+    trainMarkets = filterEligibleMarkets(trainMarkets, startDelay, chunkSize)
+    testMarkets = filterEligibleMarkets(testMarkets, startDelay, chunkSize)
 
     print("Tuning parameters...")
-    print(f"Training range: {trainStart} - {trainEnd}")
-    print(f"Test range: {testStart} - {testEnd}")
+    print(f"Training markets: {len(trainMarkets)}")
+    print(f"Test markets: {len(testMarkets)}")
 
     if strategy != weightedMajorEmasStrategy:
         raise ValueError("train() currently supports weightedMajorEmasStrategy only")
@@ -712,7 +883,7 @@ def train(data, provision, strategy):
     rankedSolutions = []
     for seedIndex in range(seedCount):
         params = genRandomWeightedEmaParams()
-        result = evaluateWeightedEmaParams(data, provision, params, chunkSize, startDelay, trainStart, trainEnd, testStart, testEnd, True)
+        result = evaluateWeightedEmaParams(trainMarkets, testMarkets, provision, params, chunkSize, startDelay, True)
         rankedSolutions.append(result)
         print(f"(Seed {seedIndex + 1}) parameters: {params} objective: {round(scoreTrainingResult(result), 4)}")
 
@@ -727,7 +898,7 @@ def train(data, provision, strategy):
         print(f"Local search {restartIndex + 1} starting from {currentResult['params']}")
         for stepIndex in range(localSteps):
             candidateParams = mutateWeightedEmaParams(currentResult["params"], stepScale)
-            candidateResult = evaluateWeightedEmaParams(data, provision, candidateParams, chunkSize, startDelay, trainStart, trainEnd, testStart, testEnd, True)
+            candidateResult = evaluateWeightedEmaParams(trainMarkets, testMarkets, provision, candidateParams, chunkSize, startDelay, True)
             if scoreTrainingResult(candidateResult) > scoreTrainingResult(currentResult):
                 currentResult = candidateResult
                 print(f"  Step {stepIndex + 1}: improved to objective {round(scoreTrainingResult(currentResult), 4)} params {currentResult['params']}")
@@ -836,21 +1007,20 @@ def main():
     }
 
 
-    # data = readData("./data/hourly/other/EURUSD60-done.csv", [(0, 1), 2, 3, 4, 5])
-    data = readData("./data/hourly/other/btc-new.csv")
-    data.initTechnicals()
+    trainMarkets = loadMarketsFromDirectory("./data/hourly/train")
+    testMarkets = loadMarketsFromDirectory("./data/hourly/test")
 
-    plt.plot(data.closes)
+    plt.plot(trainMarkets[0]["data"].closes)
     # plt.show()
 
     training = False
     provision = 0.03
 
     if (training):
-        bestResult = train(data, provision, weightedMajorEmasStrategy)
+        bestResult = train(trainMarkets, testMarkets, provision, weightedMajorEmasStrategy)
         printTrainingResult("Selected result:", bestResult)
     else:
-        demonstrate(data, provision, weightedMajorEmasStrategy, paramsTrainedEthLongEma)
+        demonstrate(testMarkets, provision, weightedMajorEmasStrategy, paramsTrainedEthLongEma)
 
 if __name__ == "__main__":
     main()
