@@ -836,8 +836,8 @@ def main():
     }
 
 
-    # data = readData("./data/hourly/EURUSD60-done.csv", [(0, 1), 2, 3, 4, 5])
-    data = readData("./data/hourly/btc-new.csv")
+    # data = readData("./data/hourly/other/EURUSD60-done.csv", [(0, 1), 2, 3, 4, 5])
+    data = readData("./data/hourly/other/btc-new.csv")
     data.initTechnicals()
 
     plt.plot(data.closes)
