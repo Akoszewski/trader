@@ -193,6 +193,27 @@ def loadMarketsFromDirectory(directoryPath, indices = DEFAULT_PRICE_INDICES):
     return markets
 
 
+def buildMarketEntry(name, path, data):
+    if len(data.emaCache) == 0:
+        data.initTechnicals()
+
+    return {
+        "name": name,
+        "path": path,
+        "data": data,
+    }
+
+
+def normalizeMarketsInput(markets):
+    if isinstance(markets, DataPoints):
+        return [buildMarketEntry("manual", "manual", markets)]
+
+    if isinstance(markets, dict):
+        return [markets]
+
+    return markets
+
+
 def filterEligibleMarkets(markets, startDelay, chunkSize):
     eligibleMarkets = []
     skippedMarkets = []
@@ -208,7 +229,19 @@ def filterEligibleMarkets(markets, startDelay, chunkSize):
         print(f"Skipping {marketName}: usable length {usableLength} is smaller than chunk size {chunkSize}")
 
     if len(eligibleMarkets) == 0:
-        raise ValueError("No eligible markets left after filtering by chunk size and warmup")
+        marketSummaries = []
+        for market in markets:
+            dataLength = len(market["data"].closes)
+            usableLength = dataLength - startDelay
+            marketSummaries.append(
+                f"{market['name']}: dataLen={dataLength}, warmup={startDelay}, usable={usableLength}, requiredChunk={chunkSize}"
+            )
+
+        details = "; ".join(marketSummaries)
+        raise ValueError(
+            "No eligible markets left after filtering by chunk size and warmup. "
+            f"startDelay={startDelay}, chunkSize={chunkSize}. {details}"
+        )
 
     return eligibleMarkets
 
@@ -562,9 +595,9 @@ def weightedMajorEmasStrategy(data, i, strategyParams):
     if (data.closes[i] < ema200):
         score -= weights[3]
 
-    if score > buyThreshold * np.sum(weights):
+    if score >= buyThreshold * np.sum(weights):
         return "BUY"
-    if score < sellThreshold * np.sum(weights):
+    if score <= sellThreshold * np.sum(weights):
         return "SELL"
     else:
         return "HOLD"
@@ -859,6 +892,7 @@ def evaluateWeightedEmaParams(trainMarkets, testMarkets, provision, params, chun
 def demonstrate(markets, provision, strategy, params):
     chunkSize = daysToIntervals(300)
     startDelay = max(200, getWeightedEmaWarmup(params))
+    markets = normalizeMarketsInput(markets)
     markets = filterEligibleMarkets(markets, startDelay, chunkSize)
     print("Demonstrating result for chosen parameters...")
     StrategyTester.testMarkets(100, strategy, markets, provision, params, chunkSize, startDelay, False)
@@ -1003,24 +1037,40 @@ def main():
         "buyThreshold": 0.9,
         "sellThreshold": -0.9,
         "weights": (0.2, 0.5, 1, 1),
-        "emaMultiplier": 168.0,
+        "emaMultiplier": 24.0,
     }
 
+    paramsTrainedOnAll = {
+        "buyThreshold": 0.424,
+        "sellThreshold": -1.0,
+        "weights": (0.654, 0.778, 0.552, 0.643),
+        "emaMultiplier": 18.123,
+    }
 
-    trainMarkets = loadMarketsFromDirectory("./data/hourly/train")
-    testMarkets = loadMarketsFromDirectory("./data/hourly/test")
-
-    plt.plot(trainMarkets[0]["data"].closes)
-    # plt.show()
+    paramsTrainedOnAllNew = {
+        "buyThreshold": 0.586,
+        "sellThreshold": -0.592,
+        "weights": (0.51, 0.389, 0.661, 0.953),
+        "emaMultiplier": 16.161,
+    }
 
     training = False
-    provision = 0.03
+    provision = 0.003
 
     if (training):
+        trainMarkets = loadMarketsFromDirectory("./data/hourly/train")
+        testMarkets = loadMarketsFromDirectory("./data/hourly/test")
+        # plt.plot(trainMarkets[0]["data"].closes)
+        # plt.show()
         bestResult = train(trainMarkets, testMarkets, provision, weightedMajorEmasStrategy)
         printTrainingResult("Selected result:", bestResult)
     else:
-        demonstrate(testMarkets, provision, weightedMajorEmasStrategy, paramsTrainedEthLongEma)
+        # demonstrationData = readData("./data/hourly/train/ada.csv")
+        demonstrationData = readData("./data/other/btc-total.csv")
+        # demonstrationData = readData("./data/other/EURUSD60-done.csv", [0, 2, 3, 4, 5])
+        # plt.plot(demonstrationData.closes)
+        # plt.show()
+        demonstrate(demonstrationData, provision, weightedMajorEmasStrategy, paramsTrainedOnAllNew)
 
 if __name__ == "__main__":
     main()
