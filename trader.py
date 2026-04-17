@@ -10,7 +10,8 @@ import itertools
 # Main function is at the bottom of the file :)
 
 BASE_EMA_PERIODS = (20, 50, 100, 200)
-MAX_EMA_MULTIPLIER = 3.0
+MIN_EMA_MULTIPLIER = 15
+MAX_EMA_MULTIPLIER = 30.0
 
 def calc_rsi_wilder(closes, period = 14):
     closes = pd.Series(closes, dtype=float).reset_index(drop = True)
@@ -315,6 +316,16 @@ def movingAveragesStrategy(data, i, strategyParams):
     else:
         return "HOLD"
 
+def movingAveragesSimpleStrategy(data, i, strategyParams):
+    ema1 = data.ema20[i]
+    ema2 = data.ema100[i]
+    if ema1 > ema2:
+        return "BUY"
+    elif ema1 < ema2:
+        return "SELL"
+    else:
+        return "HOLD"
+
 def movingAveragesCrossStrategy(data, i, strategyParams):
     if i <= 0:
         return "HOLD"
@@ -610,7 +621,7 @@ def genRandomWeightedEmaParams():
         round(random.uniform(0.0, 1.0), 3),
         round(random.uniform(0.0, 1.0), 3),
         round(random.uniform(0.0, 1.0), 3),
-        round(random.uniform(0.5, MAX_EMA_MULTIPLIER), 3),
+        round(random.uniform(MIN_EMA_MULTIPLIER, MAX_EMA_MULTIPLIER), 3),
     )
 
 
@@ -618,7 +629,7 @@ def clampWeightedEmaParams(params):
     buyThreshold = min(max(params[0], 0.0), 1.0)
     sellThreshold = min(max(params[1], -1.0), 0.0)
     weights = [min(max(weight, 0.0), 1.0) for weight in params[2:6]]
-    emaMultiplier = min(max(params[6], 0.5), MAX_EMA_MULTIPLIER)
+    emaMultiplier = min(max(params[6], MIN_EMA_MULTIPLIER), MAX_EMA_MULTIPLIER)
     return (
         round(buyThreshold, 3),
         round(sellThreshold, 3),
@@ -741,13 +752,6 @@ def train(data, provision, strategy):
     return bestResult
 
 def main():
-    # data = readData("./data/hourly/EURUSD60-done.csv", [(0, 1), 2, 3, 4, 5])
-    data = readData("./data/hourly/eth.csv")
-    data.initTechnicals()
-
-    plt.plot(data.closes)
-    # plt.show()
-
     trainedResultBestForCryptoZeroProv = (
         1.314876519201772,
         1.4190971357643607,
@@ -796,15 +800,57 @@ def main():
         "weights": (0.864, 0.576, 0.221, 0.595),
         "emaMultiplier": 2.958,
     }
+    paramsProtectBalancedTrainedOn3PromilesProvisionNewData = {
+        "buyThreshold": 0.438,
+        "sellThreshold": -1.0,
+        "weights": (0.08, 1.0, 0.566, 0.477),
+        "emaMultiplier": 2.538,
+    }
+    
+    paramsLongEma = {
+        "buyThreshold": 0.37,
+        "sellThreshold": -0.887,
+        "weights": (0.177, 0.621, 0.076, 0.509),
+        "emaMultiplier": 24,
+    }
+
+    paramsTrainedEth = {
+        "buyThreshold": 0.517,
+        "sellThreshold": -0.832,
+        "weights": (0.808, 0.66, 0.683, 0.963),
+        "emaMultiplier": 2.733,
+    }
+
+    paramsTrainedEthLongEma = {
+        "buyThreshold": 0.438,
+        "sellThreshold": -0.281,
+        "weights": (0.87, 0.344, 0.477, 0.074),
+        "emaMultiplier": 24.659,
+    }
+
+    paramsManual = {
+        "buyThreshold": 0.9,
+        "sellThreshold": -0.9,
+        "weights": (0.2, 0.5, 1, 1),
+        "emaMultiplier": 168.0,
+    }
+
+
+    # data = readData("./data/hourly/EURUSD60-done.csv", [(0, 1), 2, 3, 4, 5])
+    data = readData("./data/hourly/btc-new.csv")
+    data.initTechnicals()
+
+    plt.plot(data.closes)
+    # plt.show()
 
     training = False
-    provision = 0.005
+    provision = 0.03
 
     if (training):
         bestResult = train(data, provision, weightedMajorEmasStrategy)
         printTrainingResult("Selected result:", bestResult)
     else:
-        demonstrate(data, provision, weightedMajorEmasStrategy, paramsProtectBalancedTrainedOn5PromilesProvision2)
+        demonstrate(data, provision, weightedMajorEmasStrategy, paramsTrainedEthLongEma)
 
 if __name__ == "__main__":
     main()
