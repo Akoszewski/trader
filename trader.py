@@ -13,7 +13,12 @@ import itertools
 BASE_EMA_PERIODS = (20, 50, 100, 200)
 MIN_EMA_MULTIPLIER = 15
 MAX_EMA_MULTIPLIER = 30.0
+MULTIPLIER = 1
 DEFAULT_PRICE_INDICES = [1,3,4,5,6]
+
+
+def scalePeriod(period):
+    return period * MULTIPLIER
 
 def calc_rsi_wilder(closes, period = 14):
     closes = pd.Series(closes, dtype=float).reset_index(drop = True)
@@ -123,15 +128,25 @@ class DataPoints:
         print(f"Calculating technicals...")
         closes = pd.Series(self.closes, dtype=float)
 
-        self.sma20 = closes.rolling(window = 20, min_periods = 20).mean().to_numpy()
-        self.sma50 = closes.rolling(window = 50, min_periods = 50).mean().to_numpy()
-        self.sma100 = closes.rolling(window = 100, min_periods = 100).mean().to_numpy()
-        self.sma200 = closes.rolling(window = 200, min_periods = 200).mean().to_numpy()
+        sma20Period = scalePeriod(20)
+        sma50Period = scalePeriod(50)
+        sma100Period = scalePeriod(100)
+        sma200Period = scalePeriod(200)
 
-        self.ema20 = closes.ewm(span = 20, adjust = False, min_periods = 20).mean().to_numpy()
-        self.ema50 = closes.ewm(span = 50, adjust = False, min_periods = 50).mean().to_numpy()
-        self.ema100 = closes.ewm(span = 100, adjust = False, min_periods = 100).mean().to_numpy()
-        self.ema200 = closes.ewm(span = 200, adjust = False, min_periods = 200).mean().to_numpy()
+        ema20Period = scalePeriod(20)
+        ema50Period = scalePeriod(50)
+        ema100Period = scalePeriod(100)
+        ema200Period = scalePeriod(200)
+
+        self.sma20 = closes.rolling(window = sma20Period, min_periods = sma20Period).mean().to_numpy()
+        self.sma50 = closes.rolling(window = sma50Period, min_periods = sma50Period).mean().to_numpy()
+        self.sma100 = closes.rolling(window = sma100Period, min_periods = sma100Period).mean().to_numpy()
+        self.sma200 = closes.rolling(window = sma200Period, min_periods = sma200Period).mean().to_numpy()
+
+        self.ema20 = closes.ewm(span = ema20Period, adjust = False, min_periods = ema20Period).mean().to_numpy()
+        self.ema50 = closes.ewm(span = ema50Period, adjust = False, min_periods = ema50Period).mean().to_numpy()
+        self.ema100 = closes.ewm(span = ema100Period, adjust = False, min_periods = ema100Period).mean().to_numpy()
+        self.ema200 = closes.ewm(span = ema200Period, adjust = False, min_periods = ema200Period).mean().to_numpy()
         self.emaCache = {
             20: self.ema20,
             50: self.ema50,
@@ -446,6 +461,18 @@ def getWeightedEmaPeriods(strategyParams):
 def getWeightedEmaWarmup(strategyParams):
     return getWeightedEmaPeriods(strategyParams)[-1]
 
+
+def getStrategyWarmup(strategy, strategyParams):
+    if strategy == weightedMajorEmasStrategy:
+        return getWeightedEmaWarmup(strategyParams)
+    if strategy == movingAveragesCrossStrategy:
+        return scalePeriod(100)
+    if strategy == smaCross20Over50Strategy:
+        return scalePeriod(50)
+    if strategy == emaCross20Over50Strategy:
+        return scalePeriod(50)
+    return 0
+
 def majorMovingAveragesStrategy(data, i, strategyParams):
     ema20 = data.ema20[i]
     ema50 = data.ema50[i]
@@ -486,6 +513,50 @@ def movingAveragesCrossStrategy(data, i, strategyParams):
     slowEma = data.ema100[i]
     prevFastEma = data.ema20[i - 1]
     prevSlowEma = data.ema100[i - 1]
+
+    if isInvalidTechnicalValue(fastEma) or isInvalidTechnicalValue(slowEma):
+        return "HOLD"
+    if isInvalidTechnicalValue(prevFastEma) or isInvalidTechnicalValue(prevSlowEma):
+        return "HOLD"
+
+    if prevFastEma <= prevSlowEma and fastEma > slowEma:
+        return "BUY"
+    elif prevFastEma >= prevSlowEma and fastEma < slowEma:
+        return "SELL"
+    else:
+        return "HOLD"
+
+
+def smaCross20Over50Strategy(data, i, strategyParams):
+    if i <= 0:
+        return "HOLD"
+
+    fastSma = data.sma20[i]
+    slowSma = data.sma50[i]
+    prevFastSma = data.sma20[i - 1]
+    prevSlowSma = data.sma50[i - 1]
+
+    if isInvalidTechnicalValue(fastSma) or isInvalidTechnicalValue(slowSma):
+        return "HOLD"
+    if isInvalidTechnicalValue(prevFastSma) or isInvalidTechnicalValue(prevSlowSma):
+        return "HOLD"
+
+    if prevFastSma <= prevSlowSma and fastSma > slowSma:
+        return "BUY"
+    elif prevFastSma >= prevSlowSma and fastSma < slowSma:
+        return "SELL"
+    else:
+        return "HOLD"
+
+
+def emaCross20Over50Strategy(data, i, strategyParams):
+    if i <= 0:
+        return "HOLD"
+
+    fastEma = data.ema20[i]
+    slowEma = data.ema50[i]
+    prevFastEma = data.ema20[i - 1]
+    prevSlowEma = data.ema50[i - 1]
 
     if isInvalidTechnicalValue(fastEma) or isInvalidTechnicalValue(slowEma):
         return "HOLD"
@@ -891,7 +962,7 @@ def evaluateWeightedEmaParams(trainMarkets, testMarkets, provision, params, chun
 
 def demonstrate(markets, provision, strategy, params):
     chunkSize = daysToIntervals(300)
-    startDelay = max(200, getWeightedEmaWarmup(params))
+    startDelay = max(200, getStrategyWarmup(strategy, params))
     markets = normalizeMarketsInput(markets)
     markets = filterEligibleMarkets(markets, startDelay, chunkSize)
     print("Demonstrating result for chosen parameters...")
@@ -957,6 +1028,8 @@ def train(trainMarkets, testMarkets, provision, strategy):
     return bestResult
 
 def main():
+    global MULTIPLIER
+
     trainedResultBestForCryptoZeroProv = (
         1.314876519201772,
         1.4190971357643607,
@@ -1054,8 +1127,10 @@ def main():
         "emaMultiplier": 16.161,
     }
 
+    MULTIPLIER = 24
+
     training = False
-    provision = 0.003
+    provision = 0.03
 
     if (training):
         trainMarkets = loadMarketsFromDirectory("./data/hourly/train")
@@ -1066,11 +1141,12 @@ def main():
         printTrainingResult("Selected result:", bestResult)
     else:
         # demonstrationData = readData("./data/hourly/train/ada.csv")
-        demonstrationData = readData("./data/other/btc-total.csv")
+        demonstrationData = readData("./data/other/btc-new.csv")
         # demonstrationData = readData("./data/other/EURUSD60-done.csv", [0, 2, 3, 4, 5])
         # plt.plot(demonstrationData.closes)
         # plt.show()
-        demonstrate(demonstrationData, provision, weightedMajorEmasStrategy, paramsTrainedOnAllNew)
+        # demonstrate(demonstrationData, provision, weightedMajorEmasStrategy, paramsTrainedOnAllNew)
+        demonstrate(demonstrationData, provision, emaCross20Over50Strategy, [])
 
 if __name__ == "__main__":
     main()
